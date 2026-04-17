@@ -134,24 +134,38 @@ let mediaCamera;
 let startHands;
 let startScanStream;
 let startScanFrame = null;
+let startScanInFlight = false;
+let startScannerStarting = false;
+let startScannerSession = 0;
 let gestureHandsStarted = false;
 let culturalCarouselTimer = null;
 let culturalSlideIndex = 0;
 let culturalHands;
 let culturalScanStream;
 let culturalScanFrame = null;
+let culturalScanInFlight = false;
+let culturalScannerStarting = false;
+let culturalScannerSession = 0;
 
 const videoCtx = videoOverlay.getContext("2d");
 const gestureCtx = gestureLayer.getContext("2d");
 const FONT_SCALE_KEY = "huanghelou-font-scale";
 const CAMERA_SIZE_KEY = "huanghelou-camera-size";
+const POINTER_MODEL_COMPLEXITY = 0;
+const POINTER_DETECTION_CONFIDENCE = 0.48;
+const POINTER_TRACKING_CONFIDENCE = 0.36;
+const POINTER_PINCH_DISTANCE = 0.07;
+const POINTER_MISS_GRACE_MS = 650;
+const POINTER_CLICK_COOLDOWN_MS = 520;
+const CULTURAL_HOVER_DRAW_MS = 520;
 
 const startPointerState = {
   x: window.innerWidth / 2,
   y: window.innerHeight / 2,
   isPinching: false,
   cooldownUntil: 0,
-  hoveredElement: null
+  hoveredElement: null,
+  lastSeenAt: 0
 };
 
 const culturalDrawState = {
@@ -160,7 +174,8 @@ const culturalDrawState = {
   hoveredCard: null,
   hoverStartedAt: 0,
   isPinching: false,
-  cooldownUntil: 0
+  cooldownUntil: 0,
+  lastSeenAt: 0
 };
 
 const PANORAMA_URL = "https://www.720yun.com/vr/e03jertOev3";
@@ -213,6 +228,26 @@ function setStartScanStatus(message) {
   if (startScanStatus) {
     startScanStatus.textContent = message;
   }
+}
+
+function stopMediaStream(stream) {
+  stream?.getTracks?.().forEach((track) => track.stop());
+}
+
+function isStartScannerSessionActive(sessionId) {
+  return (
+    sessionId === startScannerSession &&
+    !document.body.classList.contains("has-entered-experience") &&
+    !document.body.classList.contains("has-open-feature")
+  );
+}
+
+function isCulturalScannerSessionActive(sessionId) {
+  return (
+    sessionId === culturalScannerSession &&
+    document.body.classList.contains("has-open-feature") &&
+    document.body.classList.contains("feature-cultural")
+  );
 }
 
 function enterGestureExperience() {
@@ -340,7 +375,7 @@ function triggerCulturalPointerClick(target) {
     return;
   }
 
-  culturalDrawState.cooldownUntil = performance.now() + 850;
+  culturalDrawState.cooldownUntil = performance.now() + POINTER_CLICK_COOLDOWN_MS;
 
   if (target.matches(".cultural-card")) {
     drawCulturalCard(target);
@@ -408,10 +443,12 @@ function collapseCulturalCard() {
 }
 
 function updateCulturalPointer(indexTip, thumbTip) {
+  const now = performance.now();
   const targetX = clamp((1 - indexTip.x) * window.innerWidth, 0, window.innerWidth);
   const targetY = clamp(indexTip.y * window.innerHeight, 0, window.innerHeight);
-  culturalDrawState.x = lerp(culturalDrawState.x, targetX, 0.32);
-  culturalDrawState.y = lerp(culturalDrawState.y, targetY, 0.32);
+  culturalDrawState.x = lerp(culturalDrawState.x, targetX, 0.5);
+  culturalDrawState.y = lerp(culturalDrawState.y, targetY, 0.5);
+  culturalDrawState.lastSeenAt = now;
 
   if (culturalPointer) {
     culturalPointer.style.left = `${culturalDrawState.x}px`;
@@ -422,15 +459,14 @@ function updateCulturalPointer(indexTip, thumbTip) {
   const targetCard = getCulturalPointerTarget();
   setCulturalCardHover(targetCard);
 
-  const now = performance.now();
-  const isPinching = distance2D(indexTip, thumbTip) < 0.055;
+  const isPinching = distance2D(indexTip, thumbTip) < POINTER_PINCH_DISTANCE;
   culturalPointer?.classList.toggle("is-clicking", isPinching);
 
   if (
     targetCard &&
     now > culturalDrawState.cooldownUntil &&
     ((isPinching && !culturalDrawState.isPinching) ||
-      (targetCard.matches(".cultural-card") && now - culturalDrawState.hoverStartedAt > 1200))
+      (targetCard.matches(".cultural-card") && now - culturalDrawState.hoverStartedAt > CULTURAL_HOVER_DRAW_MS))
   ) {
     triggerCulturalPointerClick(targetCard);
   }
@@ -442,9 +478,12 @@ function handleCulturalDrawResults(results) {
   const landmarks = results.multiHandLandmarks?.[0];
 
   if (!landmarks) {
-    culturalPointer?.classList.remove("is-visible", "is-clicking");
+    const now = performance.now();
+    if (now - culturalDrawState.lastSeenAt > POINTER_MISS_GRACE_MS) {
+      culturalPointer?.classList.remove("is-visible", "is-clicking");
+      clearCulturalCardHover();
+    }
     culturalDrawState.isPinching = false;
-    clearCulturalCardHover();
     return;
   }
 
@@ -452,9 +491,12 @@ function handleCulturalDrawResults(results) {
 }
 
 async function initCulturalDrawScanner() {
-  if (!culturalScanVideo || !culturalPointer || !window.Hands || culturalHands) {
+  if (!culturalScanVideo || !culturalPointer || !window.Hands || culturalHands || culturalScannerStarting) {
     return;
   }
+
+  culturalScannerStarting = true;
+  const sessionId = ++culturalScannerSession;
 
   try {
     culturalScanStream = await navigator.mediaDevices.getUserMedia({
@@ -466,35 +508,71 @@ async function initCulturalDrawScanner() {
       audio: false
     });
 
+    if (!isCulturalScannerSessionActive(sessionId)) {
+      stopMediaStream(culturalScanStream);
+      culturalScanStream = null;
+      return;
+    }
+
     culturalScanVideo.srcObject = culturalScanStream;
     await culturalScanVideo.play();
+
+    if (!isCulturalScannerSessionActive(sessionId)) {
+      stopMediaStream(culturalScanStream);
+      culturalScanStream = null;
+      culturalScanVideo.srcObject = null;
+      return;
+    }
 
     culturalHands = new window.Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
     culturalHands.setOptions({
       maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.62,
-      minTrackingConfidence: 0.48
+      modelComplexity: POINTER_MODEL_COMPLEXITY,
+      minDetectionConfidence: POINTER_DETECTION_CONFIDENCE,
+      minTrackingConfidence: POINTER_TRACKING_CONFIDENCE
     });
     culturalHands.onResults(handleCulturalDrawResults);
 
     const scanFrame = async () => {
-      if (!culturalHands || culturalScanVideo.readyState < 2) {
+      if (!isCulturalScannerSessionActive(sessionId) || !culturalHands) {
+        return;
+      }
+
+      if (culturalScanVideo.readyState < 2) {
         culturalScanFrame = requestAnimationFrame(scanFrame);
         return;
       }
 
-      await culturalHands.send({ image: culturalScanVideo });
-      culturalScanFrame = requestAnimationFrame(scanFrame);
+      if (!culturalScanInFlight) {
+        culturalScanInFlight = true;
+        try {
+          await culturalHands.send({ image: culturalScanVideo });
+        } catch (error) {
+          console.warn("文创抽卡手势帧处理失败。", error);
+        } finally {
+          culturalScanInFlight = false;
+        }
+      }
+
+      if (isCulturalScannerSessionActive(sessionId) && culturalHands) {
+        culturalScanFrame = requestAnimationFrame(scanFrame);
+      }
     };
 
     setCulturalDrawStatus("摄像头已开启，手掌移到卡牌上抽取。");
     scanFrame();
   } catch (error) {
     console.warn("文创抽卡摄像头不可用。", error);
+    stopMediaStream(culturalScanStream);
+    culturalScanStream = null;
+    if (culturalScanVideo) {
+      culturalScanVideo.srcObject = null;
+    }
     setCulturalDrawStatus("摄像头不可用，可直接点击卡牌抽取。");
+  } finally {
+    culturalScannerStarting = false;
   }
 }
 
@@ -504,8 +582,10 @@ function stopCulturalDrawScanner() {
     culturalScanFrame = null;
   }
 
+  culturalScannerSession += 1;
+
   if (culturalScanStream) {
-    culturalScanStream.getTracks().forEach((track) => track.stop());
+    stopMediaStream(culturalScanStream);
     culturalScanStream = null;
   }
 
@@ -518,8 +598,11 @@ function stopCulturalDrawScanner() {
   }
 
   culturalHands = null;
+  culturalScanInFlight = false;
+  culturalScannerStarting = false;
   culturalPointer?.classList.remove("is-visible", "is-clicking");
   culturalDrawState.isPinching = false;
+  culturalDrawState.lastSeenAt = 0;
   clearCulturalCardHover();
 }
 
@@ -730,7 +813,7 @@ function triggerStartPointerClick() {
     return;
   }
 
-  startPointerState.cooldownUntil = performance.now() + 850;
+  startPointerState.cooldownUntil = performance.now() + POINTER_CLICK_COOLDOWN_MS;
   setStartScanStatus(`已点击：${getStartPointerLabel(target)}`);
 
   target.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }));
@@ -739,10 +822,12 @@ function triggerStartPointerClick() {
 }
 
 function updateStartPointer(indexTip, thumbTip) {
+  const now = performance.now();
   const targetX = clamp((1 - indexTip.x) * window.innerWidth, 0, window.innerWidth);
   const targetY = clamp(indexTip.y * window.innerHeight, 0, window.innerHeight);
-  startPointerState.x = lerp(startPointerState.x, targetX, 0.36);
-  startPointerState.y = lerp(startPointerState.y, targetY, 0.36);
+  startPointerState.x = lerp(startPointerState.x, targetX, 0.54);
+  startPointerState.y = lerp(startPointerState.y, targetY, 0.54);
+  startPointerState.lastSeenAt = now;
 
   if (startHandCursor) {
     startHandCursor.style.left = `${startPointerState.x}px`;
@@ -753,10 +838,10 @@ function updateStartPointer(indexTip, thumbTip) {
   const pointerTarget = getStartPointerTarget();
   setStartPointerHover(pointerTarget);
 
-  const isPinching = distance2D(indexTip, thumbTip) < 0.055;
+  const isPinching = distance2D(indexTip, thumbTip) < POINTER_PINCH_DISTANCE;
   startHandCursor?.classList.toggle("is-clicking", isPinching);
 
-  if (isPinching && !startPointerState.isPinching && performance.now() > startPointerState.cooldownUntil) {
+  if (isPinching && !startPointerState.isPinching && now > startPointerState.cooldownUntil) {
     triggerStartPointerClick();
   }
 
@@ -767,9 +852,12 @@ function handleStartPointerResults(results) {
   const landmarks = results.multiHandLandmarks?.[0];
 
   if (!landmarks) {
-    startHandCursor?.classList.remove("is-visible", "is-clicking");
+    const now = performance.now();
+    if (now - startPointerState.lastSeenAt > POINTER_MISS_GRACE_MS) {
+      startHandCursor?.classList.remove("is-visible", "is-clicking");
+      clearStartPointerHover();
+    }
     startPointerState.isPinching = false;
-    clearStartPointerHover();
     return;
   }
 
@@ -777,9 +865,12 @@ function handleStartPointerResults(results) {
 }
 
 async function initStartPointerScanner() {
-  if (!startScanVideo || !startHandCursor || !window.Hands || startHands) {
+  if (!startScanVideo || !startHandCursor || !window.Hands || startHands || startScannerStarting) {
     return;
   }
+
+  startScannerStarting = true;
+  const sessionId = ++startScannerSession;
 
   try {
     startScanStream = await navigator.mediaDevices.getUserMedia({
@@ -791,35 +882,71 @@ async function initStartPointerScanner() {
       audio: false
     });
 
+    if (!isStartScannerSessionActive(sessionId)) {
+      stopMediaStream(startScanStream);
+      startScanStream = null;
+      return;
+    }
+
     startScanVideo.srcObject = startScanStream;
     await startScanVideo.play();
+
+    if (!isStartScannerSessionActive(sessionId)) {
+      stopMediaStream(startScanStream);
+      startScanStream = null;
+      startScanVideo.srcObject = null;
+      return;
+    }
 
     startHands = new window.Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
     startHands.setOptions({
       maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.62,
-      minTrackingConfidence: 0.48
+      modelComplexity: POINTER_MODEL_COMPLEXITY,
+      minDetectionConfidence: POINTER_DETECTION_CONFIDENCE,
+      minTrackingConfidence: POINTER_TRACKING_CONFIDENCE
     });
     startHands.onResults(handleStartPointerResults);
 
     const scanFrame = async () => {
-      if (!startHands || startScanVideo.readyState < 2) {
+      if (!isStartScannerSessionActive(sessionId) || !startHands) {
+        return;
+      }
+
+      if (startScanVideo.readyState < 2) {
         startScanFrame = requestAnimationFrame(scanFrame);
         return;
       }
 
-      await startHands.send({ image: startScanVideo });
-      startScanFrame = requestAnimationFrame(scanFrame);
+      if (!startScanInFlight) {
+        startScanInFlight = true;
+        try {
+          await startHands.send({ image: startScanVideo });
+        } catch (error) {
+          console.warn("开始页手势帧处理失败。", error);
+        } finally {
+          startScanInFlight = false;
+        }
+      }
+
+      if (isStartScannerSessionActive(sessionId) && startHands) {
+        startScanFrame = requestAnimationFrame(scanFrame);
+      }
     };
 
     setStartScanStatus("摄像头扫描中：移动食指控制光标，拇指捏合点击入口。");
     scanFrame();
   } catch (error) {
     console.warn("开始页摄像头扫描不可用。", error);
+    stopMediaStream(startScanStream);
+    startScanStream = null;
+    if (startScanVideo) {
+      startScanVideo.srcObject = null;
+    }
     setStartScanStatus("摄像头不可用，可点击入口进入。");
+  } finally {
+    startScannerStarting = false;
   }
 }
 
@@ -829,8 +956,10 @@ function stopStartPointerScanner() {
     startScanFrame = null;
   }
 
+  startScannerSession += 1;
+
   if (startScanStream) {
-    startScanStream.getTracks().forEach((track) => track.stop());
+    stopMediaStream(startScanStream);
     startScanStream = null;
   }
 
@@ -843,8 +972,11 @@ function stopStartPointerScanner() {
   }
 
   startHands = null;
+  startScanInFlight = false;
+  startScannerStarting = false;
   startHandCursor?.classList.remove("is-visible", "is-clicking");
   startPointerState.isPinching = false;
+  startPointerState.lastSeenAt = 0;
   clearStartPointerHover();
 }
 
