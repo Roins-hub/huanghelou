@@ -109,6 +109,7 @@ http://localhost:8000/
 
 - GitHub Pages
 - Vercel
+- Cloudflare Pages
 - Netlify
 - 任意静态文件服务器
 
