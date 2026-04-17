@@ -1,9 +1,11 @@
 $ErrorActionPreference = "Stop"
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
+$html = Get-Content -Raw -Encoding UTF8 -Path (Join-Path $root "index.html")
 $hologramName = -join ([char[]](0x5168, 0x606F))
 $videoPath = Join-Path $root (Join-Path $hologramName "$hologramName.mp4")
 $cloudflarePagesAssetLimitBytes = 25 * 1024 * 1024
+$hologramVideoVersion = "20260417-h264"
 
 if (-not (Test-Path -LiteralPath $videoPath)) {
   throw "hologram video should exist at the local hologram mp4 path."
@@ -27,6 +29,10 @@ if ($ffmpegExitCode -ne 0) {
 
 if ($ffmpegInfo -notmatch "Video:\s*h264\b") {
   throw "hologram video should use browser-friendly H.264 video encoding."
+}
+
+if ($html -notmatch "%E5%85%A8%E6%81%AF/%E5%85%A8%E6%81%AF\.mp4\?v=$hologramVideoVersion") {
+  throw "hologram page should cache-bust the video URL so proxy domains cannot reuse a stale failed video response."
 }
 
 "Hologram video deployment checks passed."

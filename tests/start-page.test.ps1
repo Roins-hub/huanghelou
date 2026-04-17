@@ -64,7 +64,7 @@ Assert-Contains $html 'id="backToStartButton"' "experience page should include a
 Assert-Contains $html 'data-start-action="return"' "return button should be wired as a start page action."
 Assert-Contains $html 'id="hologramPage"' "index.html should include a local hologram system page."
 Assert-Contains $html 'id="culturalPage"' "index.html should include a local cultural design page."
-Assert-Contains $html 'src="./%E5%85%A8%E6%81%AF/%E5%85%A8%E6%81%AF.mp4"' "hologram page should use the local 全息 video."
+Assert-Contains $html 'src="./%E5%85%A8%E6%81%AF/%E5%85%A8%E6%81%AF.mp4?v=20260417-h264"' "hologram page should use the cache-busted local 全息 video."
 Assert-Contains $html 'id="culturalScanVideo"' "cultural page should include a camera video for gesture draw-card interaction."
 Assert-Contains $html 'id="culturalPointer"' "cultural page should include a realtime gesture pointer."
 Assert-Contains $html 'cultural-poster-stage' "cultural page should include a large poster reveal stage."
