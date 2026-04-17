@@ -5,6 +5,22 @@ import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 
 const sceneContainer = document.getElementById("sceneContainer");
 const gestureLayer = document.getElementById("gestureLayer");
+const hotspotLayer = document.getElementById("hotspotLayer");
+const sceneSection = document.getElementById("sceneSection");
+const startPage = document.getElementById("startPage");
+const startVideo = document.getElementById("startVideo");
+const startScanVideo = document.getElementById("startScanVideo");
+const startHandCursor = document.getElementById("startHandCursor");
+const startScanStatus = document.getElementById("startScanStatus");
+const hologramPage = document.getElementById("hologramPage");
+const culturalSlides = Array.from(document.querySelectorAll(".cultural-slide"));
+const culturalScanVideo = document.getElementById("culturalScanVideo");
+const culturalPointer = document.getElementById("culturalPointer");
+const culturalDrawStatus = document.getElementById("culturalDrawStatus");
+const culturalCards = Array.from(document.querySelectorAll(".cultural-card"));
+const culturalCardRow = document.querySelector(".cultural-card-row");
+const culturalPosterStage = document.querySelector(".cultural-poster-stage");
+const culturalPosterImage = document.getElementById("culturalPosterImage");
 const statusBar = document.getElementById("statusBar");
 const statusText = document.getElementById("statusText");
 const loadingOverlay = document.getElementById("loadingOverlay");
@@ -53,6 +69,14 @@ const floorContent = {
   }
 };
 
+const floorHotspots = [
+  { floor: 1, label: "一层", yRatio: 0.14 },
+  { floor: 2, label: "二层", yRatio: 0.32 },
+  { floor: 3, label: "三层", yRatio: 0.5 },
+  { floor: 4, label: "四层", yRatio: 0.68 },
+  { floor: 5, label: "五层", yRatio: 0.86 }
+];
+
 const appState = {
   modelLoaded: false,
   modelLoading: false,
@@ -88,6 +112,16 @@ const popupState = {
   activeTimeout: null
 };
 
+const hotspotState = {
+  anchors: new Map(),
+  elements: new Map(),
+  activeFloor: null,
+  switchingUntil: 0,
+  switchTimer: null,
+  targetRotationX: 0.08,
+  targetRotationY: 0.2
+};
+
 let scene;
 let camera;
 let renderer;
@@ -97,11 +131,39 @@ let modelPivot;
 let resizeObserver;
 let hands;
 let mediaCamera;
+let startHands;
+let startScanStream;
+let startScanFrame = null;
+let gestureHandsStarted = false;
+let culturalCarouselTimer = null;
+let culturalSlideIndex = 0;
+let culturalHands;
+let culturalScanStream;
+let culturalScanFrame = null;
 
 const videoCtx = videoOverlay.getContext("2d");
 const gestureCtx = gestureLayer.getContext("2d");
 const FONT_SCALE_KEY = "huanghelou-font-scale";
 const CAMERA_SIZE_KEY = "huanghelou-camera-size";
+
+const startPointerState = {
+  x: window.innerWidth / 2,
+  y: window.innerHeight / 2,
+  isPinching: false,
+  cooldownUntil: 0,
+  hoveredElement: null
+};
+
+const culturalDrawState = {
+  x: window.innerWidth / 2,
+  y: window.innerHeight / 2,
+  hoveredCard: null,
+  hoverStartedAt: 0,
+  isPinching: false,
+  cooldownUntil: 0
+};
+
+const PANORAMA_URL = "https://www.720yun.com/vr/e03jertOev3";
 
 function setStatus(message, tone = "default") {
   statusText.textContent = message;
@@ -127,6 +189,424 @@ function setTrackingState(label, tone = "muted") {
   } else {
     trackingBadge.classList.add("is-muted");
   }
+}
+
+function stopStartBackgroundAudio() {
+  if (startVideo) {
+    startVideo.pause();
+  }
+}
+
+function playStartBackgroundAudio() {
+  if (!startVideo) {
+    return;
+  }
+
+  startVideo.muted = false;
+  startVideo.volume = 1;
+  startVideo.play().catch((error) => {
+    console.warn("有声自动播放被浏览器拦截。", error);
+  });
+}
+
+function setStartScanStatus(message) {
+  if (startScanStatus) {
+    startScanStatus.textContent = message;
+  }
+}
+
+function enterGestureExperience() {
+  stopCulturalCarousel();
+  stopCulturalDrawScanner();
+  document.body.classList.remove("has-open-feature", "feature-hologram", "feature-cultural");
+  document.body.classList.add("has-entered-experience");
+  stopStartPointerScanner();
+  startGestureHands();
+}
+
+function setCulturalSlide(index) {
+  if (!culturalSlides.length || !culturalCards.length) {
+    return;
+  }
+
+  culturalSlideIndex = (index + culturalCards.length) % culturalCards.length;
+  const activeCard = culturalCards[culturalSlideIndex];
+  const activeImage = activeCard?.querySelector("img");
+
+  culturalSlides.forEach((slide, slideIndex) => {
+    slide.classList.toggle("is-active", slideIndex === culturalSlideIndex);
+    const slideImage = slide.querySelector("img");
+    if (slideImage && activeImage) {
+      slideImage.src = activeImage.src;
+      slideImage.alt = activeImage.alt;
+    }
+  });
+}
+
+function startCulturalCarousel() {
+  if (!culturalSlides.length) {
+    return;
+  }
+
+  stopCulturalCarousel();
+  setCulturalSlide(0);
+  culturalCarouselTimer = window.setInterval(() => {
+    setCulturalSlide(culturalSlideIndex + 1);
+  }, 4800);
+}
+
+function stopCulturalCarousel() {
+  if (culturalCarouselTimer) {
+    window.clearInterval(culturalCarouselTimer);
+    culturalCarouselTimer = null;
+  }
+}
+
+function updateCulturalRotor() {
+  if (!culturalCardRow || !culturalCards.length) {
+    return;
+  }
+
+  const rowRect = culturalCardRow.getBoundingClientRect();
+  const rowCenter = rowRect.left + rowRect.width / 2;
+  const maxDistance = Math.max(rowRect.width * 0.5, 1);
+
+  culturalCards.forEach((card) => {
+    const cardRect = card.getBoundingClientRect();
+    const cardCenter = cardRect.left + cardRect.width / 2;
+    const normalized = clamp((cardCenter - rowCenter) / maxDistance, -1, 1);
+    const distance = Math.abs(normalized);
+    const tilt = normalized * -18;
+    const lift = -12 * (1 - distance);
+    const scale = 0.92 + (1 - distance) * 0.1;
+    const fade = 0.62 + (1 - distance) * 0.38;
+
+    card.style.setProperty("--card-tilt", `${tilt}deg`);
+    card.style.setProperty("--card-lift", `${lift}px`);
+    card.style.setProperty("--card-scale", String(scale));
+    card.style.setProperty("--card-fade", String(fade));
+  });
+}
+
+function setCulturalDrawStatus(message) {
+  if (culturalDrawStatus) {
+    culturalDrawStatus.textContent = message;
+  }
+}
+
+function clearCulturalCardHover() {
+  if (culturalDrawState.hoveredCard) {
+    culturalDrawState.hoveredCard.classList.remove("is-gesture-hover");
+    culturalDrawState.hoveredCard = null;
+  }
+}
+
+function getCulturalPointerTarget() {
+  const element = document.elementFromPoint(culturalDrawState.x, culturalDrawState.y);
+  return (
+    element?.closest?.(".cultural-poster-close") ||
+    element?.closest?.(".cultural-poster-stage.is-visible") ||
+    element?.closest?.(".cultural-card") ||
+    element?.closest?.('[data-start-action="return"]') ||
+    null
+  );
+}
+
+function setCulturalCardHover(card) {
+  if (culturalDrawState.hoveredCard === card) {
+    return;
+  }
+
+  clearCulturalCardHover();
+  culturalDrawState.hoverStartedAt = performance.now();
+
+  if (card) {
+    card.classList.add("is-gesture-hover");
+    culturalDrawState.hoveredCard = card;
+    if (card.matches(".cultural-card")) {
+      setCulturalDrawStatus("已锁定卡牌，捏合即可抽取。");
+    } else if (card.matches(".cultural-poster-close, .cultural-poster-stage")) {
+      setCulturalDrawStatus("已锁定海报，捏合即可收回。");
+    } else {
+      setCulturalDrawStatus("已锁定返回，捏合回到开始页。");
+    }
+  } else {
+    setCulturalDrawStatus("手掌移到卡牌上，捏合抽取。");
+  }
+}
+
+function triggerCulturalPointerClick(target) {
+  if (!target) {
+    return;
+  }
+
+  culturalDrawState.cooldownUntil = performance.now() + 850;
+
+  if (target.matches(".cultural-card")) {
+    drawCulturalCard(target);
+    return;
+  }
+
+  if (target.matches(".cultural-poster-close, .cultural-poster-stage")) {
+    collapseCulturalCard();
+    return;
+  }
+
+  target.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }));
+  target.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerType: "touch" }));
+  target.click();
+}
+
+function drawCulturalCard(card) {
+  if (!card) {
+    return;
+  }
+
+  if (card.classList.contains("is-drawn") && culturalPosterStage?.classList.contains("is-visible")) {
+    collapseCulturalCard();
+    return;
+  }
+
+  const image = card.querySelector("img");
+  const activeSlide = culturalSlides[0];
+  const activeImage = activeSlide?.querySelector("img");
+
+  culturalCards.forEach((item) => item.classList.remove("is-drawn"));
+  card.classList.add("is-drawn");
+
+  if (activeSlide && activeImage && image) {
+    activeImage.src = image.src;
+    activeImage.alt = image.alt;
+    activeSlide.classList.remove("is-active");
+    window.requestAnimationFrame(() => {
+      activeSlide.classList.add("is-active");
+    });
+  }
+
+  if (culturalPosterStage && culturalPosterImage && image) {
+    culturalPosterImage.src = image.src;
+    culturalPosterImage.alt = image.alt;
+    culturalPosterStage.classList.remove("is-visible");
+    window.requestAnimationFrame(() => {
+      culturalPosterStage.classList.add("is-visible");
+    });
+  }
+
+  culturalSlideIndex = Number(card.dataset.cardIndex || 0);
+  culturalDrawState.cooldownUntil = performance.now() + 1200;
+  setCulturalDrawStatus(`已抽中第 ${culturalSlideIndex + 1} 张文创卡。`);
+  card.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  window.requestAnimationFrame(updateCulturalRotor);
+}
+
+function collapseCulturalCard() {
+  culturalCards.forEach((item) => item.classList.remove("is-drawn"));
+  culturalPosterStage?.classList.remove("is-visible");
+  culturalDrawState.cooldownUntil = performance.now() + 420;
+  setCulturalDrawStatus("已收回海报，继续滑动或抽取卡牌。");
+  window.requestAnimationFrame(updateCulturalRotor);
+}
+
+function updateCulturalPointer(indexTip, thumbTip) {
+  const targetX = clamp((1 - indexTip.x) * window.innerWidth, 0, window.innerWidth);
+  const targetY = clamp(indexTip.y * window.innerHeight, 0, window.innerHeight);
+  culturalDrawState.x = lerp(culturalDrawState.x, targetX, 0.32);
+  culturalDrawState.y = lerp(culturalDrawState.y, targetY, 0.32);
+
+  if (culturalPointer) {
+    culturalPointer.style.left = `${culturalDrawState.x}px`;
+    culturalPointer.style.top = `${culturalDrawState.y}px`;
+    culturalPointer.classList.add("is-visible");
+  }
+
+  const targetCard = getCulturalPointerTarget();
+  setCulturalCardHover(targetCard);
+
+  const now = performance.now();
+  const isPinching = distance2D(indexTip, thumbTip) < 0.055;
+  culturalPointer?.classList.toggle("is-clicking", isPinching);
+
+  if (
+    targetCard &&
+    now > culturalDrawState.cooldownUntil &&
+    ((isPinching && !culturalDrawState.isPinching) ||
+      (targetCard.matches(".cultural-card") && now - culturalDrawState.hoverStartedAt > 1200))
+  ) {
+    triggerCulturalPointerClick(targetCard);
+  }
+
+  culturalDrawState.isPinching = isPinching;
+}
+
+function handleCulturalDrawResults(results) {
+  const landmarks = results.multiHandLandmarks?.[0];
+
+  if (!landmarks) {
+    culturalPointer?.classList.remove("is-visible", "is-clicking");
+    culturalDrawState.isPinching = false;
+    clearCulturalCardHover();
+    return;
+  }
+
+  updateCulturalPointer(landmarks[8], landmarks[4]);
+}
+
+async function initCulturalDrawScanner() {
+  if (!culturalScanVideo || !culturalPointer || !window.Hands || culturalHands) {
+    return;
+  }
+
+  try {
+    culturalScanStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: 640,
+        height: 480,
+        facingMode: "user"
+      },
+      audio: false
+    });
+
+    culturalScanVideo.srcObject = culturalScanStream;
+    await culturalScanVideo.play();
+
+    culturalHands = new window.Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    culturalHands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.62,
+      minTrackingConfidence: 0.48
+    });
+    culturalHands.onResults(handleCulturalDrawResults);
+
+    const scanFrame = async () => {
+      if (!culturalHands || culturalScanVideo.readyState < 2) {
+        culturalScanFrame = requestAnimationFrame(scanFrame);
+        return;
+      }
+
+      await culturalHands.send({ image: culturalScanVideo });
+      culturalScanFrame = requestAnimationFrame(scanFrame);
+    };
+
+    setCulturalDrawStatus("摄像头已开启，手掌移到卡牌上抽取。");
+    scanFrame();
+  } catch (error) {
+    console.warn("文创抽卡摄像头不可用。", error);
+    setCulturalDrawStatus("摄像头不可用，可直接点击卡牌抽取。");
+  }
+}
+
+function stopCulturalDrawScanner() {
+  if (culturalScanFrame) {
+    cancelAnimationFrame(culturalScanFrame);
+    culturalScanFrame = null;
+  }
+
+  if (culturalScanStream) {
+    culturalScanStream.getTracks().forEach((track) => track.stop());
+    culturalScanStream = null;
+  }
+
+  if (culturalScanVideo) {
+    culturalScanVideo.srcObject = null;
+  }
+
+  if (culturalHands?.close) {
+    culturalHands.close();
+  }
+
+  culturalHands = null;
+  culturalPointer?.classList.remove("is-visible", "is-clicking");
+  culturalDrawState.isPinching = false;
+  clearCulturalCardHover();
+}
+
+function openFeaturePage(pageName) {
+  stopGestureHands();
+  stopStartPointerScanner();
+  stopCulturalCarousel();
+  stopCulturalDrawScanner();
+  document.body.classList.remove("has-entered-experience", "feature-hologram", "feature-cultural");
+  document.body.classList.add("has-open-feature", `feature-${pageName}`);
+
+  if (pageName === "cultural") {
+    startCulturalCarousel();
+    initCulturalDrawScanner();
+    window.requestAnimationFrame(updateCulturalRotor);
+  }
+
+  if (pageName === "hologram") {
+    hologramPage?.querySelector("video")?.play().catch((error) => {
+      console.warn("全息系统视频自动播放被浏览器拦截。", error);
+    });
+  }
+}
+
+function returnToStartPage() {
+  document.body.classList.remove("has-entered-experience");
+  document.body.classList.remove("has-open-feature", "feature-hologram", "feature-cultural");
+  stopGestureHands();
+  stopCulturalCarousel();
+  collapseCulturalCard();
+  stopCulturalDrawScanner();
+  playStartBackgroundAudio();
+  initStartPointerScanner();
+  setStartScanStatus("移动食指控制光标，拇指捏合点击入口。");
+}
+
+function initStartPage() {
+  playStartBackgroundAudio();
+
+  startPage?.querySelectorAll(".start-nav__link.is-pending").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+    });
+  });
+
+  startPage?.querySelector('[data-start-action="gesture"]')?.addEventListener("click", () => {
+    enterGestureExperience();
+  });
+
+  startPage?.querySelector('[data-start-action="hologram"]')?.addEventListener("click", () => {
+    openFeaturePage("hologram");
+  });
+
+  startPage?.querySelector('[data-start-action="cultural"]')?.addEventListener("click", () => {
+    openFeaturePage("cultural");
+  });
+
+  document.querySelector('[data-start-action="return"]')?.addEventListener("click", () => {
+    returnToStartPage();
+  });
+
+  startPage?.querySelectorAll('a.start-nav__link[href^="http"]').forEach((link) => {
+    link.addEventListener("click", () => {
+      stopStartBackgroundAudio();
+      stopStartPointerScanner();
+    });
+  });
+
+  culturalCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      drawCulturalCard(card);
+    });
+  });
+
+  culturalPosterStage?.addEventListener("click", (event) => {
+    if (event.target === culturalPosterImage || event.target.closest?.(".cultural-poster-close")) {
+      collapseCulturalCard();
+    }
+  });
+
+  culturalCardRow?.addEventListener("scroll", () => {
+    window.requestAnimationFrame(updateCulturalRotor);
+  });
+  window.addEventListener("resize", updateCulturalRotor);
+  updateCulturalRotor();
+
+  initStartPointerScanner();
 }
 
 function updateLoadingVisibility() {
@@ -212,6 +692,160 @@ function initCameraSizeControls() {
   cameraSizeUp?.addEventListener("click", () => {
     applyCameraFrameSize(Number(cameraSizeRange.value || 420) + 20);
   });
+}
+
+function clearStartPointerHover() {
+  if (startPointerState.hoveredElement) {
+    startPointerState.hoveredElement.classList.remove("is-gesture-hover");
+    startPointerState.hoveredElement = null;
+  }
+}
+
+function getStartPointerTarget() {
+  const element = document.elementFromPoint(startPointerState.x, startPointerState.y);
+  return element?.closest?.(".start-nav__link") || null;
+}
+
+function setStartPointerHover(target) {
+  if (startPointerState.hoveredElement === target) {
+    return;
+  }
+
+  clearStartPointerHover();
+
+  if (target) {
+    target.classList.add("is-gesture-hover");
+    startPointerState.hoveredElement = target;
+  }
+}
+
+function getStartPointerLabel(target) {
+  return target?.querySelector("span:not(.start-nav__surface):not(.start-nav__dot)")?.textContent?.trim() || "入口";
+}
+
+function triggerStartPointerClick() {
+  const target = getStartPointerTarget();
+
+  if (!target) {
+    return;
+  }
+
+  startPointerState.cooldownUntil = performance.now() + 850;
+  setStartScanStatus(`已点击：${getStartPointerLabel(target)}`);
+
+  target.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }));
+  target.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerType: "touch" }));
+  target.click();
+}
+
+function updateStartPointer(indexTip, thumbTip) {
+  const targetX = clamp((1 - indexTip.x) * window.innerWidth, 0, window.innerWidth);
+  const targetY = clamp(indexTip.y * window.innerHeight, 0, window.innerHeight);
+  startPointerState.x = lerp(startPointerState.x, targetX, 0.36);
+  startPointerState.y = lerp(startPointerState.y, targetY, 0.36);
+
+  if (startHandCursor) {
+    startHandCursor.style.left = `${startPointerState.x}px`;
+    startHandCursor.style.top = `${startPointerState.y}px`;
+    startHandCursor.classList.add("is-visible");
+  }
+
+  const pointerTarget = getStartPointerTarget();
+  setStartPointerHover(pointerTarget);
+
+  const isPinching = distance2D(indexTip, thumbTip) < 0.055;
+  startHandCursor?.classList.toggle("is-clicking", isPinching);
+
+  if (isPinching && !startPointerState.isPinching && performance.now() > startPointerState.cooldownUntil) {
+    triggerStartPointerClick();
+  }
+
+  startPointerState.isPinching = isPinching;
+}
+
+function handleStartPointerResults(results) {
+  const landmarks = results.multiHandLandmarks?.[0];
+
+  if (!landmarks) {
+    startHandCursor?.classList.remove("is-visible", "is-clicking");
+    startPointerState.isPinching = false;
+    clearStartPointerHover();
+    return;
+  }
+
+  updateStartPointer(landmarks[8], landmarks[4]);
+}
+
+async function initStartPointerScanner() {
+  if (!startScanVideo || !startHandCursor || !window.Hands || startHands) {
+    return;
+  }
+
+  try {
+    startScanStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: 640,
+        height: 480,
+        facingMode: "user"
+      },
+      audio: false
+    });
+
+    startScanVideo.srcObject = startScanStream;
+    await startScanVideo.play();
+
+    startHands = new window.Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    startHands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.62,
+      minTrackingConfidence: 0.48
+    });
+    startHands.onResults(handleStartPointerResults);
+
+    const scanFrame = async () => {
+      if (!startHands || startScanVideo.readyState < 2) {
+        startScanFrame = requestAnimationFrame(scanFrame);
+        return;
+      }
+
+      await startHands.send({ image: startScanVideo });
+      startScanFrame = requestAnimationFrame(scanFrame);
+    };
+
+    setStartScanStatus("摄像头扫描中：移动食指控制光标，拇指捏合点击入口。");
+    scanFrame();
+  } catch (error) {
+    console.warn("开始页摄像头扫描不可用。", error);
+    setStartScanStatus("摄像头不可用，可点击入口进入。");
+  }
+}
+
+function stopStartPointerScanner() {
+  if (startScanFrame) {
+    cancelAnimationFrame(startScanFrame);
+    startScanFrame = null;
+  }
+
+  if (startScanStream) {
+    startScanStream.getTracks().forEach((track) => track.stop());
+    startScanStream = null;
+  }
+
+  if (startScanVideo) {
+    startScanVideo.srcObject = null;
+  }
+
+  if (startHands?.close) {
+    startHands.close();
+  }
+
+  startHands = null;
+  startHandCursor?.classList.remove("is-visible", "is-clicking");
+  startPointerState.isPinching = false;
+  clearStartPointerHover();
 }
 
 function showFallback(message) {
@@ -376,6 +1010,8 @@ function loadModel() {
           applyMaterialTuning(modelRoot);
           modelPivot.add(modelRoot);
           frameModel(modelRoot);
+          calculateHotspotAnchors();
+          updateHotspotPositions();
 
           appState.modelLoaded = true;
           appState.modelLoading = false;
@@ -418,6 +1054,8 @@ function resizeCanvases() {
     gestureLayer.width = width;
     gestureLayer.height = height;
   }
+
+  updateHotspotPositions();
 }
 
 function clearVideoOverlay() {
@@ -526,6 +1164,152 @@ function clearGestureLayer() {
   gestureCtx.clearRect(0, 0, gestureLayer.width, gestureLayer.height);
 }
 
+function createHotspotButtons() {
+  if (!hotspotLayer) {
+    return;
+  }
+
+  hotspotLayer.innerHTML = "";
+  hotspotState.elements.clear();
+
+  floorHotspots.forEach((hotspot) => {
+    const button = document.createElement("button");
+    button.className = "model-hotspot";
+    button.type = "button";
+    button.dataset.floor = String(hotspot.floor);
+    button.setAttribute("aria-label", `${floorContent[hotspot.floor].title}热点`);
+    button.innerHTML = `<span class="model-hotspot__text">${hotspot.label}</span>`;
+    const fallbackPosition = getFallbackHotspotPosition(hotspot);
+    button.style.left = fallbackPosition.x;
+    button.style.top = fallbackPosition.y;
+    button.classList.add("is-visible");
+    button.addEventListener("click", () => {
+      activateFloor(hotspot.floor, "hotspot");
+    });
+
+    hotspotLayer.appendChild(button);
+    hotspotState.elements.set(hotspot.floor, button);
+  });
+}
+
+function getFallbackHotspotPosition(hotspot) {
+  return {
+    x: "72%",
+    y: `${THREE.MathUtils.lerp(70, 28, hotspot.yRatio)}%`
+  };
+}
+
+function calculateHotspotAnchors() {
+  if (!modelRoot) {
+    return;
+  }
+
+  const modelBox = new THREE.Box3().setFromObject(modelRoot);
+  const size = modelBox.getSize(new THREE.Vector3());
+  const sideOffset = Math.max(size.x * 0.18, 0.12);
+  const zOffset = Math.max(size.z * 0.12, 0.08);
+
+  hotspotState.anchors.clear();
+
+  floorHotspots.forEach((hotspot, index) => {
+    const y = THREE.MathUtils.lerp(modelBox.min.y, modelBox.max.y, hotspot.yRatio);
+    const worldAnchor = new THREE.Vector3(
+      modelBox.max.x + sideOffset,
+      y,
+      modelBox.max.z - zOffset - index * 0.01
+    );
+    const localAnchor = modelRoot.worldToLocal(worldAnchor.clone());
+    hotspotState.anchors.set(hotspot.floor, localAnchor);
+  });
+}
+
+function isProjectionUsable(projected) {
+  return (
+    Number.isFinite(projected.x) &&
+    Number.isFinite(projected.y) &&
+    Number.isFinite(projected.z) &&
+    projected.z > -1 &&
+    projected.z < 1 &&
+    Math.abs(projected.x) <= 1.35 &&
+    Math.abs(projected.y) <= 1.35
+  );
+}
+
+function updateHotspotPositions() {
+  if (!hotspotLayer) {
+    return;
+  }
+
+  const width = sceneContainer.clientWidth;
+  const height = sceneContainer.clientHeight;
+
+  floorHotspots.forEach((hotspot) => {
+    const button = hotspotState.elements.get(hotspot.floor);
+    if (!button) {
+      return;
+    }
+
+    const anchor = hotspotState.anchors.get(hotspot.floor);
+    const fallbackPosition = getFallbackHotspotPosition(hotspot);
+    let x = fallbackPosition.x;
+    let y = fallbackPosition.y;
+
+    if (modelRoot && camera && anchor && width && height) {
+      const projected = modelRoot.localToWorld(anchor.clone()).project(camera);
+
+      if (isProjectionUsable(projected)) {
+        x = `${clamp((projected.x * 0.5 + 0.5) * width, 52, width - 52)}px`;
+        y = `${clamp((-projected.y * 0.5 + 0.5) * height, 34, height - 34)}px`;
+      }
+    }
+
+    button.style.left = x;
+    button.style.top = y;
+    button.classList.add("is-visible");
+  });
+}
+
+function setActiveHotspot(floorNumber) {
+  hotspotState.activeFloor = floorNumber;
+
+  hotspotState.elements.forEach((button, floor) => {
+    const isActive = floor === floorNumber;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function triggerFloorSwitchAnimation(floorNumber) {
+  const floorIndex = floorNumber - 1;
+  hotspotState.switchingUntil = performance.now() + 780;
+  hotspotState.targetRotationX = THREE.MathUtils.lerp(0.16, -0.1, floorIndex / 4);
+  hotspotState.targetRotationY = 0.36 - floorIndex * 0.18;
+  sceneSection?.classList.add("is-floor-switching");
+
+  if (hotspotState.switchTimer) {
+    window.clearTimeout(hotspotState.switchTimer);
+  }
+
+  hotspotState.switchTimer = window.setTimeout(() => {
+    sceneSection?.classList.remove("is-floor-switching");
+    hotspotState.switchTimer = null;
+  }, 780);
+}
+
+function activateFloor(floorNumber, source = "gesture") {
+  const content = floorContent[floorNumber];
+  if (!content) {
+    return;
+  }
+
+  setActiveHotspot(floorNumber);
+  triggerFloorSwitchAnimation(floorNumber);
+  showFloorPopup(floorNumber);
+
+  const sourceLabel = source === "hotspot" ? "热点" : "手势";
+  setStatus(`${sourceLabel}已切换到${content.title}。`, "success");
+}
+
 function hidePopup() {
   if (!popupState.activePopup) {
     return;
@@ -604,8 +1388,7 @@ function updateFloorRecognition(count, timestamp) {
     popupState.cooldownUntil = timestamp + 900;
     popupState.stableSince = timestamp;
     popupState.lastTriggeredCount = count;
-    showFloorPopup(count);
-    setStatus(`已识别 ${count} 指手势，正在展示对应楼层信息。`, "success");
+    activateFloor(count, "gesture");
   }
 }
 
@@ -825,12 +1608,62 @@ async function initHands() {
   updateLoadingVisibility();
 }
 
+function stopGestureHands() {
+  if (mediaCamera?.stop) {
+    mediaCamera.stop();
+  }
+
+  const inputStream = inputVideo?.srcObject;
+  if (inputStream?.getTracks) {
+    inputStream.getTracks().forEach((track) => track.stop());
+  }
+
+  if (inputVideo) {
+    inputVideo.srcObject = null;
+  }
+
+  if (hands?.close) {
+    hands.close();
+  }
+
+  mediaCamera = null;
+  hands = null;
+  gestureHandsStarted = false;
+  appState.cameraReady = false;
+  clearVideoOverlay();
+  clearGestureLayer();
+  setTrackingState("待启动", "muted");
+}
+
+async function startGestureHands() {
+  if (gestureHandsStarted) {
+    return;
+  }
+
+  gestureHandsStarted = true;
+
+  try {
+    await initHands();
+  } catch (error) {
+    console.error(error);
+    appState.cameraDenied = true;
+    setTrackingState("不可用", "error");
+    cameraHint.textContent = "手势识别初始化失败，已保留鼠标控制模式。";
+    setStatus("MediaPipe 初始化失败，已保留 Three.js 鼠标控制。", "warning");
+    updateLoadingVisibility();
+  }
+}
+
 function animate() {
   requestAnimationFrame(animate);
 
   if (modelRoot) {
     gestureState.currentScale = lerp(gestureState.currentScale, gestureState.targetScale, 0.24);
-    const modelScale = gestureState.baseModelScale * gestureState.currentScale;
+    const now = performance.now();
+    const switchRemaining = Math.max(0, hotspotState.switchingUntil - now);
+    const switchProgress = switchRemaining > 0 ? switchRemaining / 780 : 0;
+    const switchBoost = 1 + Math.sin(switchProgress * Math.PI) * 0.08;
+    const modelScale = gestureState.baseModelScale * gestureState.currentScale * switchBoost;
     modelRoot.scale.setScalar(modelScale);
 
     gestureState.currentVelX = lerp(gestureState.currentVelX, gestureState.targetVelX, 0.28);
@@ -839,8 +1672,14 @@ function animate() {
     modelPivot.rotation.y += gestureState.currentVelY;
     modelPivot.rotation.x = clamp(modelPivot.rotation.x + gestureState.currentVelX, -0.6, 0.42);
 
+    if (switchRemaining > 0) {
+      modelPivot.rotation.y = lerp(modelPivot.rotation.y, hotspotState.targetRotationY, 0.055);
+      modelPivot.rotation.x = lerp(modelPivot.rotation.x, hotspotState.targetRotationX, 0.06);
+    }
+
     gestureState.targetVelX *= 0.72;
     gestureState.targetVelY *= 0.72;
+    updateHotspotPositions();
   }
 
   controls.update();
@@ -861,24 +1700,15 @@ function attachEvents() {
 }
 
 async function init() {
+  initStartPage();
   initFontScaleControls();
   initCameraSizeControls();
+  createHotspotButtons();
   createScene();
   resizeCanvases();
   attachEvents();
   loadModel();
   animate();
-
-  try {
-    await initHands();
-  } catch (error) {
-    console.error(error);
-    appState.cameraDenied = true;
-    setTrackingState("不可用", "error");
-    cameraHint.textContent = "手势识别初始化失败，已保留鼠标控制模式。";
-    setStatus("MediaPipe 初始化失败，已保留 Three.js 鼠标控制。", "warning");
-    updateLoadingVisibility();
-  }
 }
 
 init();

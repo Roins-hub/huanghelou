@@ -14,9 +14,161 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./style.css?v=20260417-cultural-poster-title" />
   </head>
   <body>
+    <section id="startPage" class="start-page" aria-label="数字黄鹤楼开始页面">
+      <video
+        id="startVideo"
+        class="start-video"
+        autoplay
+        loop
+        playsinline
+        preload="auto"
+      >
+        <source src="./%E5%BC%80%E5%A7%8B.mp4" type="video/mp4" />
+      </video>
+      <video
+        id="startScanVideo"
+        class="start-scan-video"
+        autoplay
+        muted
+        playsinline
+      ></video>
+      <div id="startHandCursor" class="start-hand-cursor" aria-hidden="true">
+        <span class="start-hand-cursor__halo"></span>
+        <span class="start-hand-cursor__core"></span>
+        <span class="start-hand-cursor__glint"></span>
+      </div>
+      <div class="start-scrim" aria-hidden="true"></div>
+      <div class="start-noise" aria-hidden="true"></div>
+
+      <div class="start-content">
+        <p class="start-kicker">Digital Yellow Crane Tower</p>
+        <h1 class="start-title">黄鹤楼沉浸式数字展厅</h1>
+        <p class="start-copy">选择入口，进入江城地标的多维体验。</p>
+
+        <nav class="start-nav" aria-label="体验入口">
+          <a class="start-nav__link" href="https://www.720yun.com/vr/e03jertOev3">
+            <span class="start-nav__surface" aria-hidden="true"></span>
+            <span class="start-nav__dot" aria-hidden="true"></span>
+            <span>VR 全景</span>
+            <small>Panoramic View</small>
+          </a>
+          <button class="start-nav__link" type="button" data-start-action="gesture">
+            <span class="start-nav__surface" aria-hidden="true"></span>
+            <span class="start-nav__dot" aria-hidden="true"></span>
+            <span>手势交互</span>
+            <small>Gesture Interaction</small>
+          </button>
+          <button class="start-nav__link" type="button" data-start-action="hologram">
+            <span class="start-nav__surface" aria-hidden="true"></span>
+            <span class="start-nav__dot" aria-hidden="true"></span>
+            <span>全息系统</span>
+            <small>Holographic System</small>
+          </button>
+          <button class="start-nav__link" type="button" data-start-action="cultural">
+            <span class="start-nav__surface" aria-hidden="true"></span>
+            <span class="start-nav__dot" aria-hidden="true"></span>
+            <span>文创设计</span>
+            <small>Cultural Design</small>
+          </button>
+        </nav>
+
+        <div class="start-scan-hud" aria-live="polite">
+          <p class="start-scan-hud__label">Gesture Pointer</p>
+          <p id="startScanStatus" class="start-scan-hud__status">移动食指控制光标，拇指捏合点击入口。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="hologramPage" class="feature-page feature-page--hologram" aria-label="全息系统页面">
+      <div class="feature-grid" aria-hidden="true"></div>
+      <div class="feature-shell">
+        <div class="feature-copy">
+          <p class="feature-kicker">Holographic System</p>
+          <h2>全息系统</h2>
+          <p>江楼影像进入实时光场，建筑层叠、光束扫描与空间声画共同构成立体观看入口。</p>
+          <div class="feature-meta">
+            <span>LOCAL VIDEO</span>
+            <span>IMMERSIVE FIELD</span>
+            <span>RETURN READY</span>
+          </div>
+        </div>
+        <div class="hologram-stage">
+          <video class="hologram-video" autoplay loop muted playsinline preload="auto">
+            <source src="./%E5%85%A8%E6%81%AF/%E5%85%A8%E6%81%AF.mp4" type="video/mp4" />
+          </video>
+          <div class="hologram-scan" aria-hidden="true"></div>
+          <div class="hologram-readout" aria-hidden="true">
+            <span>signal 98%</span>
+            <span>volumetric stream</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="culturalPage" class="feature-page feature-page--cultural" aria-label="文创设计页面">
+      <div class="feature-grid" aria-hidden="true"></div>
+      <div class="feature-shell">
+        <div class="feature-copy">
+          <p class="feature-kicker">Cultural Design</p>
+          <h2>海报展示</h2>
+          <p>张开手掌移动选择卡牌，捏合拇指与食指即可抽取一张文创灵感卡。</p>
+          <div class="feature-meta">
+            <span>5 CARD DRAW</span>
+            <span>GESTURE PICK</span>
+            <span>REVEAL MOTION</span>
+          </div>
+        </div>
+        <div class="cultural-carousel cultural-draw-stage" aria-label="文创设计手势抽卡">
+          <video id="culturalScanVideo" class="cultural-scan-video" autoplay muted playsinline></video>
+          <div id="culturalPointer" class="cultural-pointer" aria-hidden="true"></div>
+          <div class="cultural-draw-status" id="culturalDrawStatus" aria-live="polite">手掌移到卡牌上，捏合抽取。</div>
+          <div class="cultural-rotor" aria-label="文创卡牌旋钮">
+            <div class="cultural-card-row">
+              <button class="cultural-card" type="button" data-card-index="0" aria-label="抽取文创设计图一">
+                <span class="cultural-card__back">鹤</span>
+                <img src="./%E6%96%87%E5%88%9B/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260401153310_20_953.jpg" alt="文创设计图一" />
+              </button>
+              <button class="cultural-card" type="button" data-card-index="1" aria-label="抽取文创设计图二">
+                <span class="cultural-card__back">楼</span>
+                <img src="./%E6%96%87%E5%88%9B/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260401153311_21_953.png" alt="文创设计图二" />
+              </button>
+              <button class="cultural-card" type="button" data-card-index="2" aria-label="抽取文创设计图三">
+                <span class="cultural-card__back">江</span>
+                <img src="./%E6%96%87%E5%88%9B/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260416174459_50_130.jpg" alt="文创设计图三" />
+              </button>
+              <button class="cultural-card" type="button" data-card-index="3" aria-label="抽取文创设计图四">
+                <span class="cultural-card__back">城</span>
+                <img src="./%E6%96%87%E5%88%9B/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260416174500_51_130.jpg" alt="文创设计图四" />
+              </button>
+              <button class="cultural-card" type="button" data-card-index="4" aria-label="抽取文创设计图五">
+                <span class="cultural-card__back">礼</span>
+                <img src="./%E6%96%87%E5%88%9B/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260403195442_77_953.jpg" alt="文创设计图五" />
+              </button>
+            </div>
+          </div>
+          <figure class="cultural-poster-stage" aria-live="polite">
+            <button type="button" class="cultural-poster-close" aria-label="收回海报">收回</button>
+            <img
+              id="culturalPosterImage"
+              src="./%E6%96%87%E5%88%9B/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260401153310_20_953.jpg"
+              alt="抽中的文创海报"
+            />
+          </figure>
+          <figure class="cultural-slide is-active">
+            <img src="./%E6%96%87%E5%88%9B/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260401153310_20_953.jpg" alt="当前抽中的文创设计" />
+          </figure>
+          <div class="cultural-progress" aria-hidden="true"></div>
+        </div>
+      </div>
+    </section>
+
+    <button id="backToStartButton" class="back-to-start" type="button" data-start-action="return">
+      返回开始页
+    </button>
+
     <div class="app-shell">
       <div class="background-orbs" aria-hidden="true">
         <span class="orb orb-a"></span>
@@ -106,6 +258,7 @@
         <section id="sceneSection" class="scene-section" aria-label="三维模型展示区">
           <div id="sceneContainer" class="scene-container"></div>
           <canvas id="gestureLayer" class="gesture-layer" aria-hidden="true"></canvas>
+          <div id="hotspotLayer" class="hotspot-layer" aria-label="楼层热点标注"></div>
 
           <div id="fallbackCard" class="fallback-card hidden" role="alert">
             <p class="fallback-label">模型加载失败</p>
