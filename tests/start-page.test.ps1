@@ -59,6 +59,8 @@ Assert-NotContains $html 'href="https://3d.hunyuan.tencent.com/assets"' "全息�
 Assert-NotContains $html 'href="https://baidu.com"' "文创设计 should no longer use the old external link."
 Assert-Contains $html 'data-start-action="hologram"' "全息系统 should open the local hologram page."
 Assert-Contains $html 'data-start-action="cultural"' "文创设计 should open the local cultural page."
+Assert-Contains $html '<span>海报展示</span>' "start page cultural entry should be labeled 海报展示."
+Assert-NotContains $html '<span>文创设计</span>' "start page cultural entry should no longer be labeled 文创设计."
 Assert-Contains $html 'data-start-action="gesture"' "鎵嬪娍浜や簰 should enter the current gesture experience."
 Assert-Contains $html 'id="backToStartButton"' "experience page should include a button that returns to the start page."
 Assert-Contains $html 'data-start-action="return"' "return button should be wired as a start page action."
