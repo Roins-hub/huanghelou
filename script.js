@@ -9,9 +9,6 @@ const hotspotLayer = document.getElementById("hotspotLayer");
 const sceneSection = document.getElementById("sceneSection");
 const startPage = document.getElementById("startPage");
 const startVideo = document.getElementById("startVideo");
-const startScanVideo = document.getElementById("startScanVideo");
-const startHandCursor = document.getElementById("startHandCursor");
-const startScanStatus = document.getElementById("startScanStatus");
 const hologramPage = document.getElementById("hologramPage");
 const culturalSlides = Array.from(document.querySelectorAll(".cultural-slide"));
 const culturalScanVideo = document.getElementById("culturalScanVideo");
@@ -131,12 +128,6 @@ let modelPivot;
 let resizeObserver;
 let hands;
 let mediaCamera;
-let startHands;
-let startScanStream;
-let startScanFrame = null;
-let startScanInFlight = false;
-let startScannerStarting = false;
-let startScannerSession = 0;
 let gestureHandsStarted = false;
 let culturalCarouselTimer = null;
 let culturalSlideIndex = 0;
@@ -158,15 +149,6 @@ const POINTER_PINCH_DISTANCE = 0.07;
 const POINTER_MISS_GRACE_MS = 650;
 const POINTER_CLICK_COOLDOWN_MS = 520;
 const CULTURAL_HOVER_DRAW_MS = 520;
-
-const startPointerState = {
-  x: window.innerWidth / 2,
-  y: window.innerHeight / 2,
-  isPinching: false,
-  cooldownUntil: 0,
-  hoveredElement: null,
-  lastSeenAt: 0
-};
 
 const culturalDrawState = {
   x: window.innerWidth / 2,
@@ -224,22 +206,8 @@ function playStartBackgroundAudio() {
   });
 }
 
-function setStartScanStatus(message) {
-  if (startScanStatus) {
-    startScanStatus.textContent = message;
-  }
-}
-
 function stopMediaStream(stream) {
   stream?.getTracks?.().forEach((track) => track.stop());
-}
-
-function isStartScannerSessionActive(sessionId) {
-  return (
-    sessionId === startScannerSession &&
-    !document.body.classList.contains("has-entered-experience") &&
-    !document.body.classList.contains("has-open-feature")
-  );
 }
 
 function isCulturalScannerSessionActive(sessionId) {
@@ -255,7 +223,6 @@ function enterGestureExperience() {
   stopCulturalDrawScanner();
   document.body.classList.remove("has-open-feature", "feature-hologram", "feature-cultural");
   document.body.classList.add("has-entered-experience");
-  stopStartPointerScanner();
   startGestureHands();
 }
 
@@ -608,7 +575,6 @@ function stopCulturalDrawScanner() {
 
 function openFeaturePage(pageName) {
   stopGestureHands();
-  stopStartPointerScanner();
   stopCulturalCarousel();
   stopCulturalDrawScanner();
   document.body.classList.remove("has-entered-experience", "feature-hologram", "feature-cultural");
@@ -635,8 +601,6 @@ function returnToStartPage() {
   collapseCulturalCard();
   stopCulturalDrawScanner();
   playStartBackgroundAudio();
-  initStartPointerScanner();
-  setStartScanStatus("移动食指控制光标，拇指捏合点击入口。");
 }
 
 function initStartPage() {
@@ -667,7 +631,6 @@ function initStartPage() {
   startPage?.querySelectorAll('a.start-nav__link[href^="http"]').forEach((link) => {
     link.addEventListener("click", () => {
       stopStartBackgroundAudio();
-      stopStartPointerScanner();
     });
   });
 
@@ -688,8 +651,6 @@ function initStartPage() {
   });
   window.addEventListener("resize", updateCulturalRotor);
   updateCulturalRotor();
-
-  initStartPointerScanner();
 }
 
 function updateLoadingVisibility() {
@@ -775,209 +736,6 @@ function initCameraSizeControls() {
   cameraSizeUp?.addEventListener("click", () => {
     applyCameraFrameSize(Number(cameraSizeRange.value || 420) + 20);
   });
-}
-
-function clearStartPointerHover() {
-  if (startPointerState.hoveredElement) {
-    startPointerState.hoveredElement.classList.remove("is-gesture-hover");
-    startPointerState.hoveredElement = null;
-  }
-}
-
-function getStartPointerTarget() {
-  const element = document.elementFromPoint(startPointerState.x, startPointerState.y);
-  return element?.closest?.(".start-nav__link") || null;
-}
-
-function setStartPointerHover(target) {
-  if (startPointerState.hoveredElement === target) {
-    return;
-  }
-
-  clearStartPointerHover();
-
-  if (target) {
-    target.classList.add("is-gesture-hover");
-    startPointerState.hoveredElement = target;
-  }
-}
-
-function getStartPointerLabel(target) {
-  return target?.querySelector("span:not(.start-nav__surface):not(.start-nav__dot)")?.textContent?.trim() || "入口";
-}
-
-function triggerStartPointerClick() {
-  const target = getStartPointerTarget();
-
-  if (!target) {
-    return;
-  }
-
-  startPointerState.cooldownUntil = performance.now() + POINTER_CLICK_COOLDOWN_MS;
-  setStartScanStatus(`已点击：${getStartPointerLabel(target)}`);
-
-  target.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }));
-  target.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerType: "touch" }));
-  target.click();
-}
-
-function updateStartPointer(indexTip, thumbTip) {
-  const now = performance.now();
-  const targetX = clamp((1 - indexTip.x) * window.innerWidth, 0, window.innerWidth);
-  const targetY = clamp(indexTip.y * window.innerHeight, 0, window.innerHeight);
-  startPointerState.x = lerp(startPointerState.x, targetX, 0.54);
-  startPointerState.y = lerp(startPointerState.y, targetY, 0.54);
-  startPointerState.lastSeenAt = now;
-
-  if (startHandCursor) {
-    startHandCursor.style.left = `${startPointerState.x}px`;
-    startHandCursor.style.top = `${startPointerState.y}px`;
-    startHandCursor.classList.add("is-visible");
-  }
-
-  const pointerTarget = getStartPointerTarget();
-  setStartPointerHover(pointerTarget);
-
-  const isPinching = distance2D(indexTip, thumbTip) < POINTER_PINCH_DISTANCE;
-  startHandCursor?.classList.toggle("is-clicking", isPinching);
-
-  if (isPinching && !startPointerState.isPinching && now > startPointerState.cooldownUntil) {
-    triggerStartPointerClick();
-  }
-
-  startPointerState.isPinching = isPinching;
-}
-
-function handleStartPointerResults(results) {
-  const landmarks = results.multiHandLandmarks?.[0];
-
-  if (!landmarks) {
-    const now = performance.now();
-    if (now - startPointerState.lastSeenAt > POINTER_MISS_GRACE_MS) {
-      startHandCursor?.classList.remove("is-visible", "is-clicking");
-      clearStartPointerHover();
-    }
-    startPointerState.isPinching = false;
-    return;
-  }
-
-  updateStartPointer(landmarks[8], landmarks[4]);
-}
-
-async function initStartPointerScanner() {
-  if (!startScanVideo || !startHandCursor || !window.Hands || startHands || startScannerStarting) {
-    return;
-  }
-
-  startScannerStarting = true;
-  const sessionId = ++startScannerSession;
-
-  try {
-    startScanStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: 640,
-        height: 480,
-        facingMode: "user"
-      },
-      audio: false
-    });
-
-    if (!isStartScannerSessionActive(sessionId)) {
-      stopMediaStream(startScanStream);
-      startScanStream = null;
-      return;
-    }
-
-    startScanVideo.srcObject = startScanStream;
-    await startScanVideo.play();
-
-    if (!isStartScannerSessionActive(sessionId)) {
-      stopMediaStream(startScanStream);
-      startScanStream = null;
-      startScanVideo.srcObject = null;
-      return;
-    }
-
-    startHands = new window.Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    });
-    startHands.setOptions({
-      maxNumHands: 1,
-      modelComplexity: POINTER_MODEL_COMPLEXITY,
-      minDetectionConfidence: POINTER_DETECTION_CONFIDENCE,
-      minTrackingConfidence: POINTER_TRACKING_CONFIDENCE
-    });
-    startHands.onResults(handleStartPointerResults);
-
-    const scanFrame = async () => {
-      if (!isStartScannerSessionActive(sessionId) || !startHands) {
-        return;
-      }
-
-      if (startScanVideo.readyState < 2) {
-        startScanFrame = requestAnimationFrame(scanFrame);
-        return;
-      }
-
-      if (!startScanInFlight) {
-        startScanInFlight = true;
-        try {
-          await startHands.send({ image: startScanVideo });
-        } catch (error) {
-          console.warn("开始页手势帧处理失败。", error);
-        } finally {
-          startScanInFlight = false;
-        }
-      }
-
-      if (isStartScannerSessionActive(sessionId) && startHands) {
-        startScanFrame = requestAnimationFrame(scanFrame);
-      }
-    };
-
-    setStartScanStatus("摄像头扫描中：移动食指控制光标，拇指捏合点击入口。");
-    scanFrame();
-  } catch (error) {
-    console.warn("开始页摄像头扫描不可用。", error);
-    stopMediaStream(startScanStream);
-    startScanStream = null;
-    if (startScanVideo) {
-      startScanVideo.srcObject = null;
-    }
-    setStartScanStatus("摄像头不可用，可点击入口进入。");
-  } finally {
-    startScannerStarting = false;
-  }
-}
-
-function stopStartPointerScanner() {
-  if (startScanFrame) {
-    cancelAnimationFrame(startScanFrame);
-    startScanFrame = null;
-  }
-
-  startScannerSession += 1;
-
-  if (startScanStream) {
-    stopMediaStream(startScanStream);
-    startScanStream = null;
-  }
-
-  if (startScanVideo) {
-    startScanVideo.srcObject = null;
-  }
-
-  if (startHands?.close) {
-    startHands.close();
-  }
-
-  startHands = null;
-  startScanInFlight = false;
-  startScannerStarting = false;
-  startHandCursor?.classList.remove("is-visible", "is-clicking");
-  startPointerState.isPinching = false;
-  startPointerState.lastSeenAt = 0;
-  clearStartPointerHover();
 }
 
 function showFallback(message) {

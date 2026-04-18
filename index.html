@@ -28,18 +28,6 @@
       >
         <source src="./%E5%BC%80%E5%A7%8B.mp4" type="video/mp4" />
       </video>
-      <video
-        id="startScanVideo"
-        class="start-scan-video"
-        autoplay
-        muted
-        playsinline
-      ></video>
-      <div id="startHandCursor" class="start-hand-cursor" aria-hidden="true">
-        <span class="start-hand-cursor__halo"></span>
-        <span class="start-hand-cursor__core"></span>
-        <span class="start-hand-cursor__glint"></span>
-      </div>
       <div class="start-scrim" aria-hidden="true"></div>
       <div class="start-noise" aria-hidden="true"></div>
 
@@ -75,10 +63,6 @@
           </button>
         </nav>
 
-        <div class="start-scan-hud" aria-live="polite">
-          <p class="start-scan-hud__label">Gesture Pointer</p>
-          <p id="startScanStatus" class="start-scan-hud__status">移动食指控制光标，拇指捏合点击入口。</p>
-        </div>
       </div>
     </section>
 
@@ -360,6 +344,6 @@
         }
       }
     </script>
-    <script type="module" src="./script.js?v=20260417-gesture-responsive-2"></script>
+    <script type="module" src="./script.js?v=20260418-start-mouse-only"></script>
   </body>
 </html>
