@@ -199,10 +199,11 @@ function playStartBackgroundAudio() {
     return;
   }
 
-  startVideo.muted = false;
-  startVideo.volume = 1;
+  startVideo.muted = true;
+  startVideo.defaultMuted = true;
+  startVideo.volume = 0;
   startVideo.play().catch((error) => {
-    console.warn("有声自动播放被浏览器拦截。", error);
+    console.warn("开始页背景视频自动播放被浏览器拦截。", error);
   });
 }
 

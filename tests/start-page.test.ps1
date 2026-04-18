@@ -39,7 +39,7 @@ function Assert-NotContains {
 
 Assert-Contains $html 'id="startPage"' "index.html should include a start page shell."
 Assert-Contains $html 'style.css?v=20260417-cultural-poster-title' "index.html should cache-bust the latest cultural poster title CSS."
-Assert-Contains $html 'script.js?v=20260418-start-mouse-only' "index.html should cache-bust the mouse-only start page script."
+Assert-Contains $html 'script.js?v=20260418-start-muted-video' "index.html should cache-bust the muted start video script."
 Assert-Contains $html 'id="startVideo"' "index.html should include the start page background video."
 Assert-NotContains $html 'id="startScanVideo"' "start page should not include a camera scanner video."
 Assert-NotContains $html 'id="startHandCursor"' "start page should not include a gesture-controlled cursor."
@@ -53,7 +53,7 @@ $startVideoTag = [regex]::Match($html, '<video\s+[^>]*id="startVideo"[^>]*>', 'S
 if (-not $startVideoTag) {
   throw "start video tag should be present."
 }
-Assert-NotContains $startVideoTag "muted" "start video should not be muted in markup."
+Assert-Contains $startVideoTag "muted" "start video should be muted in markup so browser autoplay policies allow motion."
 Assert-NotContains $html "01 VR" "start page links should not use numeric prefixes."
 Assert-Contains $html 'href="https://www.720yun.com/vr/e03jertOev3"' "VR 鍏ㄦ櫙 should link to the 720yun panorama."
 Assert-NotContains $html 'href="https://3d.hunyuan.tencent.com/assets"' "全息系统 should no longer use the old external link."
@@ -177,7 +177,9 @@ Assert-Contains $js "https://www.720yun.com/vr/e03jertOev3" "script.js should ke
 Assert-NotContains $js "https://3d.hunyuan.tencent.com/assets" "script.js should no longer keep the holographic external URL."
 Assert-NotContains $js "https://baidu.com" "script.js should no longer keep the cultural external URL."
 Assert-Contains $js "stopStartBackgroundAudio()" "external routes should stop the start page background music."
-Assert-Contains $js "startVideo.play()" "script.js should try to autoplay the video with sound."
+Assert-Contains $js "startVideo.muted = true" "script.js should keep the start page background video muted for autoplay."
+Assert-NotContains $js "startVideo.muted = false" "script.js should not force audible autoplay on the start page."
+Assert-Contains $js "startVideo.play()" "script.js should try to autoplay the start page background video."
 Assert-Contains $js 'document.body.classList.add("has-entered-experience")' "gesture entry should reveal the current experience."
 Assert-Contains $js 'document.body.classList.remove("has-entered-experience")' "return action should reveal the start page again."
 Assert-Contains $js 'querySelector(''[data-start-action="return"]'')' "return button should be registered by script.js."
