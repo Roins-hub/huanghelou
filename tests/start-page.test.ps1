@@ -46,7 +46,7 @@ Assert-NotContains $html 'id="startHandCursor"' "start page should not include a
 Assert-NotContains $html 'Gesture Pointer' "start page should not show gesture pointer instructions."
 Assert-NotContains $html 'id="startScanStatus"' "start page should not include start gesture scan status text."
 Assert-NotContains $html 'id="startTraceCanvas"' "start page should not use a drawing trace canvas."
-Assert-Contains $html 'src="./%E5%BC%80%E5%A7%8B.mp4"' "start page should use the encoded 寮€濮?mp4 video path."
+Assert-Contains $html 'src="./%E5%BC%80%E5%A7%8B.mp4?v=20260418-start-video"' "start page should use the cache-busted encoded 寮€濮?mp4 video path."
 Assert-Contains $html "autoplay" "start video should request autoplay."
 Assert-Contains $html "playsinline" "start video should play inline on mobile."
 $startVideoTag = [regex]::Match($html, '<video\s+[^>]*id="startVideo"[^>]*>', 'Singleline').Value
