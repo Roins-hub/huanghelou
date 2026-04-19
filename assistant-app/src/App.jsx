@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChatContainer, MainContainer, Message, MessageInput, MessageList } from "@chatscope/chat-ui-kit-react";
+import { Analytics } from "@vercel/analytics/react";
 
 import { streamChatMessage, testAssistantProvider } from "./api.js";
 import {
@@ -305,7 +306,12 @@ function ChatPage() {
 }
 
 function App() {
-  return isSettingsPath ? <SettingsPage /> : <ChatPage />;
+  return (
+    <>
+      {isSettingsPath ? <SettingsPage /> : <ChatPage />}
+      <Analytics />
+    </>
+  );
 }
 
 export default App;
