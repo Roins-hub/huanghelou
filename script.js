@@ -625,6 +625,11 @@ function initStartPage() {
     openFeaturePage("cultural");
   });
 
+  startPage?.querySelector('[data-start-action="assistant"]')?.addEventListener("click", () => {
+    stopStartBackgroundAudio();
+    window.location.href = "assistant/";
+  });
+
   document.querySelector('[data-start-action="return"]')?.addEventListener("click", () => {
     returnToStartPage();
   });

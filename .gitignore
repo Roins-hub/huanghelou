@@ -1,2 +1,8 @@
 .vercel
 .wrangler
+node_modules
+assistant-app/node_modules
+assistant
+.env
+.env.local
+*.log

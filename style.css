@@ -243,9 +243,9 @@ body.has-open-feature .start-page {
 
 .start-nav {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  width: min(1280px, 100%);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  width: min(1640px, 100%);
   margin: 0 auto;
 }
 
@@ -255,10 +255,10 @@ body.has-open-feature .start-page {
   grid-template-columns: 18px auto;
   grid-template-rows: auto auto;
   align-items: center;
-  column-gap: 12px;
+  column-gap: 10px;
   min-width: 0;
-  min-height: 96px;
-  padding: 14px 18px 14px 14px;
+  min-height: 92px;
+  padding: 14px 16px 14px 14px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.34);
   border-radius: 26px;
@@ -294,6 +294,10 @@ body.has-open-feature .start-page {
 
 .start-nav__link:nth-child(4) {
   animation-delay: 240ms;
+}
+
+.start-nav__link:nth-child(5) {
+  animation-delay: 320ms;
 }
 
 .start-nav__surface {
@@ -348,16 +352,16 @@ body.has-open-feature .start-page {
 }
 
 .start-nav__link > span:not(.start-nav__surface):not(.start-nav__dot) {
-  font-size: clamp(1.22rem, 1.8vw, 1.8rem);
+  font-size: clamp(1.08rem, 1.42vw, 1.58rem);
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 .start-nav__link small {
   grid-column: 2;
-  font-size: 0.66rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(54, 78, 112, 0.68);
   color: rgba(255, 255, 255, 0.62);
