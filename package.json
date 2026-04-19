@@ -6,6 +6,7 @@
     "dev": "npm run build && node local-dev-server.js",
     "test": "vitest run",
     "build": "npm run install:assistant && npm --prefix assistant-app run build",
+    "build:vercel": "npm run build && node scripts/build-vercel-output.js",
     "install:assistant": "npm --prefix assistant-app install"
   },
   "devDependencies": {

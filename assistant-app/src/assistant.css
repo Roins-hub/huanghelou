@@ -325,7 +325,7 @@ textarea {
   border-radius: 50%;
   background:
     rgba(248, 244, 232, 0.58)
-    url("/assistant/机器人管理.png")
+    url("./assets/ai-avatar.png")
     center / cover
     no-repeat;
   box-shadow: 0 4px 14px rgba(36, 34, 31, 0.12);
@@ -388,7 +388,7 @@ textarea {
   border-radius: 50%;
   background:
     rgba(248, 244, 232, 0.58)
-    url("/assistant/用户.png")
+    url("./assets/user-avatar.png")
     center / cover
     no-repeat;
   box-shadow: 0 4px 14px rgba(36, 34, 31, 0.12);

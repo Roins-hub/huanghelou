@@ -3,6 +3,7 @@
 node_modules
 assistant-app/node_modules
 assistant
+dist
 .env
 .env.local
 *.log
