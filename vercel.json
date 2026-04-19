@@ -3,11 +3,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/**/*.js": {
-      "includeFiles": [
-        "data/assistant-knowledge.json",
-        "黄鹤楼数字化转型路线图：从传统观光到智慧沉浸的战略跃迁.md",
-        "黄鹤楼历史遗址数字化转型战略路线图：从“景观游览”到“文化共鸣”.md"
-      ]
+      "includeFiles": "{data/assistant-knowledge.json,*.md}"
     }
   }
 }
