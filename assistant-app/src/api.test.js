@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { streamChatMessage, testAssistantProvider } from "./api.js";
+import {
+  clearChatSession,
+  loadChatSession,
+  saveChatSession,
+  streamChatMessage,
+  testAssistantProvider
+} from "./api.js";
 
 function createTextStream(chunks) {
   const encoder = new TextEncoder();
@@ -130,5 +136,70 @@ describe("assistant api streaming", () => {
 
     expect(onChunk).toHaveBeenCalledWith("欢迎来到第二层。");
     expect(reply).toBe("欢迎来到第二层。");
+  });
+
+  it("loads, saves and clears chat sessions through the session endpoint", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      if (options.method === "PUT") {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json; charset=utf-8" }
+        });
+      }
+
+      if (options.method === "DELETE") {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json; charset=utf-8" }
+        });
+      }
+
+      return new Response(JSON.stringify({
+        messages: [
+          {
+            id: "welcome",
+            direction: "incoming",
+            sender: "assistant",
+            message: "你好"
+          }
+        ]
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json; charset=utf-8" }
+      });
+    }));
+
+    await expect(loadChatSession("visitor_1")).resolves.toHaveLength(1);
+    await saveChatSession("visitor_1", [
+      {
+        id: "welcome",
+        direction: "incoming",
+        sender: "assistant",
+        message: "你好"
+      }
+    ]);
+    await clearChatSession("visitor_1");
+
+    expect(fetch).toHaveBeenNthCalledWith(1, "/api/chat-session?sessionId=visitor_1", expect.objectContaining({
+      method: "GET"
+    }));
+    expect(fetch).toHaveBeenNthCalledWith(2, "/api/chat-session", expect.objectContaining({
+      method: "PUT",
+      body: JSON.stringify({
+        sessionId: "visitor_1",
+        messages: [
+          {
+            id: "welcome",
+            direction: "incoming",
+            sender: "assistant",
+            message: "你好"
+          }
+        ]
+      })
+    }));
+    expect(fetch).toHaveBeenNthCalledWith(3, "/api/chat-session", expect.objectContaining({
+      method: "DELETE",
+      body: JSON.stringify({ sessionId: "visitor_1" })
+    }));
   });
 });

@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 
 import chatHandler from "./api/chat.js";
+import chatSessionHandler from "./api/chat-session.js";
 import testModelHandler from "./api/test-model.js";
 
 const root = process.cwd();
@@ -115,6 +116,17 @@ async function handleApiChat(request, response) {
   }
 }
 
+async function handleApiChatSession(request, response) {
+  try {
+    request.body = request.method === "GET" ? {} : await readRequestBody(request);
+    await chatSessionHandler(request, createVercelLikeResponse(response));
+  } catch (error) {
+    response.statusCode = error.message === "Invalid JSON body" ? 400 : 500;
+    response.setHeader("Content-Type", "application/json; charset=utf-8");
+    response.end(JSON.stringify({ error: "本地会话接口请求失败，请检查请求内容或服务日志。" }));
+  }
+}
+
 async function handleApiTestModel(request, response) {
   try {
     request.body = await readRequestBody(request);
@@ -155,6 +167,11 @@ loadEnvFile();
 
 createServer((request, response) => {
   if (request.url?.startsWith("/api/chat")) {
+    if (request.url?.startsWith("/api/chat-session")) {
+      handleApiChatSession(request, response);
+      return;
+    }
+
     handleApiChat(request, response);
     return;
   }

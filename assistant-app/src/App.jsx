@@ -1,7 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChatContainer, MainContainer, Message, MessageInput, MessageList } from "@chatscope/chat-ui-kit-react";
 
-import { streamChatMessage, testAssistantProvider } from "./api.js";
+import {
+  clearChatSession,
+  loadChatSession,
+  saveChatSession,
+  streamChatMessage,
+  testAssistantProvider
+} from "./api.js";
 import {
   buildProviderPayload,
   hasCustomProvider,
@@ -29,6 +35,32 @@ const floorGuideItems = [
 const isSettingsPath =
   window.location.pathname.replace(/\/$/, "").endsWith("/settings") ||
   new URLSearchParams(window.location.search).get("settings") === "1";
+
+const CHAT_SESSION_STORAGE_KEY = "huanghelou-assistant-session-id";
+
+function createSessionId() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID().replace(/-/g, "");
+  }
+
+  return `visitor_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function getChatSessionId() {
+  try {
+    const existing = window.localStorage.getItem(CHAT_SESSION_STORAGE_KEY);
+
+    if (existing) {
+      return existing;
+    }
+
+    const next = createSessionId();
+    window.localStorage.setItem(CHAT_SESSION_STORAGE_KEY, next);
+    return next;
+  } catch {
+    return createSessionId();
+  }
+}
 
 function FloorGuideCard() {
   return (
@@ -174,7 +206,58 @@ function ChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
   const [settings] = useState(loadAssistantSettings);
+  const [isHistoryReady, setIsHistoryReady] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState("");
+  const sessionId = useMemo(getChatSessionId, []);
+  const saveTimerRef = useRef(null);
   const apiHistory = useMemo(() => buildApiHistory(messages), [messages]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    loadChatSession(sessionId)
+      .then((savedMessages) => {
+        if (!isMounted) {
+          return;
+        }
+
+        if (savedMessages.length) {
+          setMessages(savedMessages);
+          setSessionStatus("已恢复历史对话");
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setSessionStatus("历史对话暂时无法读取");
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsHistoryReady(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!isHistoryReady) {
+      return undefined;
+    }
+
+    window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      saveChatSession(sessionId, messages).catch(() => {
+        setSessionStatus("历史对话暂时无法保存");
+      });
+    }, 500);
+
+    return () => {
+      window.clearTimeout(saveTimerRef.current);
+    };
+  }, [isHistoryReady, messages, sessionId]);
 
   async function submitMessage(rawMessage) {
     const message = rawMessage.trim();
@@ -225,6 +308,18 @@ function ChatPage() {
     window.location.href = "?settings=1";
   }
 
+  async function handleClearHistory() {
+    setError("");
+    setMessages(createInitialMessages());
+    setSessionStatus("对话已清空");
+
+    try {
+      await clearChatSession(sessionId);
+    } catch {
+      setSessionStatus("服务器历史暂时无法清空");
+    }
+  }
+
   return (
     <main className="assistant-page">
       <section className="assistant-shell" aria-label="黄鹤楼 AI 智能导览">
@@ -237,6 +332,9 @@ function ChatPage() {
           </button>
           <button className="api-settings-button" type="button" onClick={openSettings}>
             API 设置
+          </button>
+          <button className="api-settings-button" type="button" onClick={handleClearHistory}>
+            清空对话
           </button>
           <p className="assistant-kicker">Yellow Crane Tower</p>
           <h1>黄鹤楼 AI 智能导览</h1>
@@ -270,6 +368,7 @@ function ChatPage() {
             <small>黄鹤楼数字展厅小助手</small>
           </div>
           <span className="assistant-context-count">已保留最近 {apiHistory.length} 条上下文</span>
+          {sessionStatus ? <span className="assistant-session-status">{sessionStatus}</span> : null}
           <FloorGuideCard />
           <MainContainer>
             <ChatContainer>

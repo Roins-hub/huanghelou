@@ -149,3 +149,54 @@ export async function testAssistantProvider(provider) {
 
   return data;
 }
+
+async function readJsonResponse(response) {
+  return response.json().catch(() => ({}));
+}
+
+export async function loadChatSession(sessionId) {
+  const response = await fetch(`/api/chat-session?sessionId=${encodeURIComponent(sessionId)}`, {
+    method: "GET"
+  });
+  const data = await readJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || "无法读取历史对话。");
+  }
+
+  return Array.isArray(data.messages) ? data.messages : [];
+}
+
+export async function saveChatSession(sessionId, messages) {
+  const response = await fetch("/api/chat-session", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ sessionId, messages })
+  });
+  const data = await readJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || "无法保存历史对话。");
+  }
+
+  return data;
+}
+
+export async function clearChatSession(sessionId) {
+  const response = await fetch("/api/chat-session", {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ sessionId })
+  });
+  const data = await readJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || "无法清空历史对话。");
+  }
+
+  return data;
+}

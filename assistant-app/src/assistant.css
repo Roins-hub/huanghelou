@@ -275,6 +275,15 @@ textarea {
   font-size: 0.82rem;
 }
 
+.assistant-session-status {
+  position: absolute;
+  z-index: 3;
+  top: 38px;
+  right: 18px;
+  color: rgba(37, 35, 31, 0.56);
+  font-size: 0.78rem;
+}
+
 .assistant-chat .cs-main-container {
   position: relative;
   z-index: 1;
@@ -805,6 +814,12 @@ textarea {
     top: 12px;
     right: 14px;
     font-size: 0.76rem;
+  }
+
+  .assistant-session-status {
+    top: 32px;
+    right: 14px;
+    font-size: 0.72rem;
   }
 
   .floor-guide-card {
