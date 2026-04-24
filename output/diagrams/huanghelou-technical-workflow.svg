@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1350" viewBox="0 0 2400 1350">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6f1e6"/>
+      <stop offset="50%" stop-color="#edf2f0"/>
+      <stop offset="100%" stop-color="#e4e7df"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#edf4f2" stop-opacity="0.82"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3f7ea3"/>
+      <stop offset="100%" stop-color="#82b8c7"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4f8d78"/>
+      <stop offset="100%" stop-color="#99c4a8"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#b18b47"/>
+      <stop offset="100%" stop-color="#d5bd74"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#2b3a3b" flood-opacity="0.16"/>
+    </filter>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#5b6c6e" stroke-width="1" opacity="0.08"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M2 2L10 6L2 10Z" fill="#4b7180"/>
+    </marker>
+    <style>
+      .title{font-family:"Microsoft YaHei","Noto Sans SC",Arial,sans-serif;font-size:52px;font-weight:800;fill:#1f2d2f}
+      .subtitle{font-family:"Microsoft YaHei","Noto Sans SC",Arial,sans-serif;font-size:25px;fill:#526467}
+      .stage-title{font-family:"Microsoft YaHei","Noto Sans SC",Arial,sans-serif;font-size:27px;font-weight:800;fill:#1f2d2f}
+      .stage-en{font-family:Arial,sans-serif;font-size:17px;font-weight:700;letter-spacing:.04em;fill:#5a7075}
+      .body{font-family:"Microsoft YaHei","Noto Sans SC",Arial,sans-serif;font-size:21px;fill:#2d3c3f}
+      .caption{font-family:"Microsoft YaHei","Noto Sans SC",Arial,sans-serif;font-size:18px;fill:#607175}
+      .tag{font-family:Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:.08em;fill:white}
+      .small{font-family:"Microsoft YaHei","Noto Sans SC",Arial,sans-serif;font-size:18px;fill:#354548}
+      .code{font-family:Consolas,"Courier New",monospace;font-size:18px;fill:#34545d}
+    </style>
+  </defs>
+
+  <rect width="2400" height="1350" fill="url(#bg)"/>
+  <rect width="2400" height="1350" fill="url(#grid)"/>
+  <circle cx="2060" cy="160" r="280" fill="#9db9bd" opacity="0.12"/>
+  <circle cx="250" cy="1100" r="340" fill="#bfab77" opacity="0.13"/>
+
+  <text x="120" y="112" class="title">黄鹤楼智慧沉浸式数字展厅技术工作流</text>
+  <text x="120" y="158" class="subtitle">Technical Workflow of Yellow Crane Tower Intelligent Immersive Digital Gallery</text>
+  <rect x="1740" y="82" width="520" height="62" rx="8" fill="#1f2d2f" opacity="0.88"/>
+  <text x="1772" y="121" class="tag">WEBGL · GESTURE AI · LLM · SERVERLESS · QA</text>
+
+  <g transform="translate(120 250)">
+    <rect x="0" y="0" width="330" height="710" rx="18" fill="url(#panel)" filter="url(#shadow)" stroke="#cfd8d5"/>
+    <rect x="26" y="26" width="278" height="48" rx="24" fill="url(#gold)"/>
+    <text x="62" y="58" class="tag">01 DIGITAL ASSETS</text>
+    <text x="32" y="126" class="stage-title">数字资产采集与建模层</text>
+    <text x="32" y="158" class="stage-en">Asset Acquisition &amp; Modeling</text>
+    <g transform="translate(82 205)">
+      <rect x="0" y="80" width="165" height="105" rx="10" fill="#d9c17a" opacity="0.78"/>
+      <path d="M28 95L82 48L138 95V185H28Z" fill="#8f9d94"/>
+      <path d="M48 108H116V185H48Z" fill="#314143" opacity="0.92"/>
+      <path d="M43 105L82 72L122 105" fill="none" stroke="#f6f1e6" stroke-width="10"/>
+      <circle cx="82" cy="28" r="15" fill="#b24737"/>
+    </g>
+    <text x="44" y="462" class="body">• 三维模型资产：SPZ / OBJ / MTL</text>
+    <text x="44" y="501" class="body">• PBR Texture 与场景贴图</text>
+    <text x="44" y="540" class="body">• 背景图、开始视频、全息视频</text>
+    <text x="44" y="579" class="body">• 文创海报与导览内容资产</text>
+  </g>
+
+  <g transform="translate(500 250)">
+    <rect x="0" y="0" width="330" height="710" rx="18" fill="url(#panel)" filter="url(#shadow)" stroke="#cfd8d5"/>
+    <rect x="26" y="26" width="278" height="48" rx="24" fill="url(#blue)"/>
+    <text x="66" y="58" class="tag">02 RENDERING</text>
+    <text x="32" y="126" class="stage-title">沉浸式前端渲染层</text>
+    <text x="32" y="158" class="stage-en">Immersive Rendering Layer</text>
+    <g transform="translate(54 214)">
+      <rect x="0" y="0" width="220" height="150" rx="14" fill="#273538"/>
+      <rect x="18" y="18" width="184" height="104" rx="8" fill="#b8d2d4"/>
+      <path d="M55 112C88 55 130 55 166 112" fill="none" stroke="#4f8d78" stroke-width="10"/>
+      <rect x="85" y="150" width="50" height="42" fill="#273538"/>
+      <rect x="52" y="190" width="118" height="12" rx="6" fill="#273538"/>
+    </g>
+    <text x="44" y="462" class="body">• Three.js WebGL Scene Pipeline</text>
+    <text x="44" y="501" class="body">• 模型加载、缩放、旋转与楼层热点</text>
+    <text x="44" y="540" class="body">• HTML / CSS / Vanilla JS 主站</text>
+    <text x="44" y="579" class="body">• 响应式沉浸式展厅界面</text>
+  </g>
+
+  <g transform="translate(880 250)">
+    <rect x="0" y="0" width="330" height="710" rx="18" fill="url(#panel)" filter="url(#shadow)" stroke="#cfd8d5"/>
+    <rect x="26" y="26" width="278" height="48" rx="24" fill="url(#green)"/>
+    <text x="58" y="58" class="tag">03 MULTIMODAL AI</text>
+    <text x="32" y="126" class="stage-title">多模态交互识别层</text>
+    <text x="32" y="158" class="stage-en">Gesture Recognition Layer</text>
+    <g transform="translate(72 210)">
+      <rect x="0" y="0" width="185" height="185" rx="22" fill="#e7efec" stroke="#8fb9ad"/>
+      <circle cx="92" cy="92" r="55" fill="#5c947f" opacity="0.2"/>
+      <path d="M62 126V70C62 58 80 58 80 70V99" stroke="#2f484b" stroke-width="13" stroke-linecap="round" fill="none"/>
+      <path d="M82 102V52C82 39 101 39 101 52V100" stroke="#2f484b" stroke-width="13" stroke-linecap="round" fill="none"/>
+      <path d="M104 101V60C104 48 122 49 122 61V105" stroke="#2f484b" stroke-width="13" stroke-linecap="round" fill="none"/>
+      <path d="M126 107V78C126 67 143 69 143 81V128C143 157 62 160 62 126Z" fill="#2f484b"/>
+      <circle cx="42" cy="38" r="8" fill="#b24737"/>
+      <circle cx="150" cy="38" r="8" fill="#b24737"/>
+      <circle cx="42" cy="150" r="8" fill="#b24737"/>
+      <circle cx="150" cy="150" r="8" fill="#b24737"/>
+    </g>
+    <text x="44" y="462" class="body">• Camera Stream 实时采集</text>
+    <text x="44" y="501" class="body">• MediaPipe Hands Landmark Inference</text>
+    <text x="44" y="540" class="body">• 单手楼层触发 / 双手缩放旋转</text>
+    <text x="44" y="579" class="body">• 手势命令映射到场景控制</text>
+  </g>
+
+  <g transform="translate(1260 250)">
+    <rect x="0" y="0" width="330" height="710" rx="18" fill="url(#panel)" filter="url(#shadow)" stroke="#cfd8d5"/>
+    <rect x="26" y="26" width="278" height="48" rx="24" fill="#6f8791"/>
+    <text x="62" y="58" class="tag">04 EXPERIENCE</text>
+    <text x="32" y="126" class="stage-title">展陈体验模块层</text>
+    <text x="32" y="158" class="stage-en">Exhibition Experience Modules</text>
+    <g transform="translate(54 204)">
+      <rect x="0" y="0" width="220" height="210" rx="18" fill="#e8eeeb" stroke="#b8c7c3"/>
+      <rect x="24" y="28" width="75" height="58" rx="8" fill="#4f8d78"/>
+      <rect x="122" y="28" width="75" height="58" rx="8" fill="#3f7ea3"/>
+      <rect x="24" y="120" width="75" height="58" rx="8" fill="#b18b47"/>
+      <rect x="122" y="120" width="75" height="58" rx="8" fill="#b24737"/>
+      <text x="47" y="64" class="tag">3D</text>
+      <text x="140" y="64" class="tag">VR</text>
+      <text x="38" y="156" class="tag">POST</text>
+      <text x="140" y="156" class="tag">AI</text>
+    </g>
+    <text x="44" y="462" class="body">• 手势导览与楼层讲解</text>
+    <text x="44" y="501" class="body">• 全息系统与沉浸式影像</text>
+    <text x="44" y="540" class="body">• 文创海报互动与抽取体验</text>
+    <text x="44" y="579" class="body">• VR 全景与 AI 智能导览入口</text>
+  </g>
+
+  <g transform="translate(1640 250)">
+    <rect x="0" y="0" width="330" height="710" rx="18" fill="url(#panel)" filter="url(#shadow)" stroke="#cfd8d5"/>
+    <rect x="26" y="26" width="278" height="48" rx="24" fill="#7b6fa3"/>
+    <text x="75" y="58" class="tag">05 AI SERVICE</text>
+    <text x="32" y="126" class="stage-title">AI 导览服务编排层</text>
+    <text x="32" y="158" class="stage-en">AI Orchestration Layer</text>
+    <g transform="translate(66 212)">
+      <rect x="0" y="0" width="200" height="170" rx="20" fill="#eef1f5" stroke="#aeb8c9"/>
+      <circle cx="100" cy="75" r="44" fill="#7b6fa3" opacity="0.2"/>
+      <path d="M62 73C75 39 125 39 138 73C151 107 109 130 100 143C91 130 49 107 62 73Z" fill="#7b6fa3"/>
+      <rect x="48" y="130" width="104" height="18" rx="9" fill="#2f3848"/>
+      <circle cx="76" cy="72" r="5" fill="#fff"/>
+      <circle cx="124" cy="72" r="5" fill="#fff"/>
+    </g>
+    <text x="44" y="462" class="body">• React + Vite + Chatscope</text>
+    <text x="44" y="501" class="body">• Serverless API：<tspan class="code">/api/chat</tspan></text>
+    <text x="44" y="540" class="body">• Knowledge Injection + Context Window</text>
+    <text x="44" y="579" class="body">• DeepSeek Chat Completion</text>
+  </g>
+
+  <g transform="translate(2020 250)">
+    <rect x="0" y="0" width="330" height="710" rx="18" fill="url(#panel)" filter="url(#shadow)" stroke="#cfd8d5"/>
+    <rect x="26" y="26" width="278" height="48" rx="24" fill="#2f484b"/>
+    <text x="67" y="58" class="tag">06 DELIVERY &amp; QA</text>
+    <text x="32" y="126" class="stage-title">部署交付与质量保障层</text>
+    <text x="32" y="158" class="stage-en">Deployment &amp; Quality Assurance</text>
+    <g transform="translate(60 214)">
+      <rect x="0" y="0" width="210" height="154" rx="16" fill="#e8efef" stroke="#a9bbbd"/>
+      <rect x="28" y="30" width="154" height="22" rx="6" fill="#2f484b"/>
+      <rect x="28" y="66" width="154" height="22" rx="6" fill="#3f7ea3"/>
+      <rect x="28" y="102" width="154" height="22" rx="6" fill="#4f8d78"/>
+      <circle cx="166" cy="41" r="5" fill="#d5bd74"/>
+      <circle cx="166" cy="77" r="5" fill="#d5bd74"/>
+      <circle cx="166" cy="113" r="5" fill="#d5bd74"/>
+    </g>
+    <text x="44" y="462" class="body">• Vercel Static + Serverless Delivery</text>
+    <text x="44" y="501" class="body">• Node.js Local Dev Server</text>
+    <text x="44" y="540" class="body">• Environment Variable Governance</text>
+    <text x="44" y="579" class="body">• Vitest + Playwright Verification</text>
+  </g>
+
+  <g stroke="#4b7180" stroke-width="5" fill="none" marker-end="url(#arrow)" opacity="0.9">
+    <path d="M450 605H492"/>
+    <path d="M830 605H872"/>
+    <path d="M1210 605H1252"/>
+    <path d="M1590 605H1632"/>
+    <path d="M1970 605H2012"/>
+  </g>
+
+  <g transform="translate(210 1060)">
+    <rect x="0" y="0" width="1980" height="156" rx="20" fill="#ffffff" opacity="0.78" stroke="#ccd7d4"/>
+    <text x="38" y="56" class="stage-title">System Integration Statement</text>
+    <text x="38" y="98" class="caption">The system integrates WebGL-based cultural heritage visualization, real-time gesture recognition, multimodal exhibition interaction, and LLM-powered knowledge services into a deployable intelligent digital tourism platform.</text>
+    <text x="38" y="132" class="caption">系统融合 WebGL 文化遗产可视化、实时手势识别、多模态展陈交互与大语言模型知识服务，构建可部署的智慧文旅沉浸式数字平台。</text>
+  </g>
+</svg>
