@@ -153,6 +153,8 @@ const POINTER_PINCH_START_DISTANCE = 0.055;
 const POINTER_PINCH_END_DISTANCE = 0.075;
 const POINTER_MISS_GRACE_MS = 650;
 const POINTER_CLICK_COOLDOWN_MS = 520;
+const VIEW_QUERY_PARAM = "view";
+const ROUTED_VIEWS = new Set(["gesture", "hologram", "cultural"]);
 
 const culturalDrawState = {
   x: window.innerWidth / 2,
@@ -230,6 +232,38 @@ function enterGestureExperience() {
   document.body.classList.remove("has-open-feature", "feature-hologram", "feature-cultural");
   document.body.classList.add("has-entered-experience");
   startGestureHands();
+}
+
+function setRouteView(viewName, mode = "push") {
+  const url = new URL(window.location.href);
+
+  if (viewName && ROUTED_VIEWS.has(viewName)) {
+    url.searchParams.set(VIEW_QUERY_PARAM, viewName);
+  } else {
+    url.searchParams.delete(VIEW_QUERY_PARAM);
+  }
+
+  const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+
+  if (nextUrl === `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+    return;
+  }
+
+  if (mode === "replace") {
+    window.history.replaceState({ view: viewName || "start" }, "", nextUrl);
+  } else {
+    window.history.pushState({ view: viewName || "start" }, "", nextUrl);
+  }
+}
+
+function getRouteView() {
+  const viewName = new URLSearchParams(window.location.search).get(VIEW_QUERY_PARAM);
+  return ROUTED_VIEWS.has(viewName) ? viewName : "";
+}
+
+function openGestureRoute(mode = "push") {
+  setRouteView("gesture", mode);
+  enterGestureExperience();
 }
 
 function setCulturalSlide(index) {
@@ -603,7 +637,8 @@ function stopCulturalDrawScanner() {
   clearCulturalCardHover();
 }
 
-function openFeaturePage(pageName) {
+function openFeaturePage(pageName, mode = "push") {
+  setRouteView(pageName, mode);
   stopGestureHands();
   stopCulturalCarousel();
   stopCulturalDrawScanner();
@@ -624,6 +659,7 @@ function openFeaturePage(pageName) {
 }
 
 function returnToStartPage() {
+  setRouteView("", "push");
   document.body.classList.remove("has-entered-experience");
   document.body.classList.remove("has-open-feature", "feature-hologram", "feature-cultural");
   stopGestureHands();
@@ -631,6 +667,22 @@ function returnToStartPage() {
   collapseCulturalCard();
   stopCulturalDrawScanner();
   playStartBackgroundAudio();
+}
+
+function restoreRoutedView(mode = "replace") {
+  const viewName = getRouteView();
+
+  if (viewName === "gesture") {
+    openGestureRoute(mode);
+    return;
+  }
+
+  if (viewName) {
+    openFeaturePage(viewName, mode);
+    return;
+  }
+
+  returnToStartPage();
 }
 
 function initStartPage() {
@@ -643,7 +695,7 @@ function initStartPage() {
   });
 
   startPage?.querySelector('[data-start-action="gesture"]')?.addEventListener("click", () => {
-    enterGestureExperience();
+    openGestureRoute();
   });
 
   startPage?.querySelector('[data-start-action="hologram"]')?.addEventListener("click", () => {
@@ -661,6 +713,10 @@ function initStartPage() {
 
   document.querySelector('[data-start-action="return"]')?.addEventListener("click", () => {
     returnToStartPage();
+  });
+
+  window.addEventListener("popstate", () => {
+    restoreRoutedView("replace");
   });
 
   startPage?.querySelectorAll('a.start-nav__link[href^="http"]').forEach((link) => {
@@ -1673,6 +1729,7 @@ async function init() {
   attachEvents();
   loadModel();
   animate();
+  restoreRoutedView("replace");
 }
 
 init();
