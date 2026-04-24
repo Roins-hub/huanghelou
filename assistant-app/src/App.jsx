@@ -15,6 +15,7 @@ import {
   saveAssistantSettings
 } from "./assistant-settings.js";
 import {
+  API_HISTORY_LIMIT,
   appendAssistantPlaceholder,
   appendToMessage,
   appendUserMessage,
@@ -367,7 +368,7 @@ function ChatPage() {
             <span>AI 智能导览</span>
             <small>黄鹤楼数字展厅小助手</small>
           </div>
-          <span className="assistant-context-count">已保留最近 {apiHistory.length} 条上下文</span>
+          <span className="assistant-context-count">用于回复的上下文：{apiHistory.length}/{API_HISTORY_LIMIT} 条</span>
           {sessionStatus ? <span className="assistant-session-status">{sessionStatus}</span> : null}
           <FloorGuideCard />
           <MainContainer>

@@ -129,6 +129,7 @@ let resizeObserver;
 let hands;
 let mediaCamera;
 let gestureHandsStarted = false;
+let gestureScanInFlight = false;
 let culturalCarouselTimer = null;
 let culturalSlideIndex = 0;
 let culturalHands;
@@ -142,13 +143,16 @@ const videoCtx = videoOverlay.getContext("2d");
 const gestureCtx = gestureLayer.getContext("2d");
 const FONT_SCALE_KEY = "huanghelou-font-scale";
 const CAMERA_SIZE_KEY = "huanghelou-camera-size";
-const POINTER_MODEL_COMPLEXITY = 0;
-const POINTER_DETECTION_CONFIDENCE = 0.48;
-const POINTER_TRACKING_CONFIDENCE = 0.36;
-const POINTER_PINCH_DISTANCE = 0.07;
+const HAND_MODEL_COMPLEXITY = 1;
+const HAND_DETECTION_CONFIDENCE = 0.45;
+const HAND_TRACKING_CONFIDENCE = 0.34;
+const POINTER_MODEL_COMPLEXITY = 1;
+const POINTER_DETECTION_CONFIDENCE = 0.42;
+const POINTER_TRACKING_CONFIDENCE = 0.3;
+const POINTER_PINCH_START_DISTANCE = 0.055;
+const POINTER_PINCH_END_DISTANCE = 0.075;
 const POINTER_MISS_GRACE_MS = 650;
 const POINTER_CLICK_COOLDOWN_MS = 520;
-const CULTURAL_HOVER_DRAW_MS = 520;
 
 const culturalDrawState = {
   x: window.innerWidth / 2,
@@ -157,7 +161,8 @@ const culturalDrawState = {
   hoverStartedAt: 0,
   isPinching: false,
   cooldownUntil: 0,
-  lastSeenAt: 0
+  lastSeenAt: 0,
+  handVisible: false
 };
 
 const PANORAMA_URL = "https://www.720yun.com/vr/e03jertOev3";
@@ -360,6 +365,14 @@ function triggerCulturalPointerClick(target) {
   target.click();
 }
 
+function isCulturalPinching(indexTip, thumbTip) {
+  const threshold = culturalDrawState.isPinching
+    ? POINTER_PINCH_END_DISTANCE
+    : POINTER_PINCH_START_DISTANCE;
+
+  return distance2D(indexTip, thumbTip) < threshold;
+}
+
 function drawCulturalCard(card) {
   if (!card) {
     return;
@@ -412,11 +425,16 @@ function collapseCulturalCard() {
 
 function updateCulturalPointer(indexTip, thumbTip) {
   const now = performance.now();
-  const targetX = clamp((1 - indexTip.x) * window.innerWidth, 0, window.innerWidth);
+  const targetX = clamp(indexTip.x * window.innerWidth, 0, window.innerWidth);
   const targetY = clamp(indexTip.y * window.innerHeight, 0, window.innerHeight);
   culturalDrawState.x = lerp(culturalDrawState.x, targetX, 0.5);
   culturalDrawState.y = lerp(culturalDrawState.y, targetY, 0.5);
   culturalDrawState.lastSeenAt = now;
+
+  if (!culturalDrawState.handVisible) {
+    culturalDrawState.handVisible = true;
+    setCulturalDrawStatus("已识别手势，移动到卡牌上即可抽取。");
+  }
 
   if (culturalPointer) {
     culturalPointer.style.left = `${culturalDrawState.x}px`;
@@ -427,14 +445,14 @@ function updateCulturalPointer(indexTip, thumbTip) {
   const targetCard = getCulturalPointerTarget();
   setCulturalCardHover(targetCard);
 
-  const isPinching = distance2D(indexTip, thumbTip) < POINTER_PINCH_DISTANCE;
+  const isPinching = isCulturalPinching(indexTip, thumbTip);
   culturalPointer?.classList.toggle("is-clicking", isPinching);
 
   if (
     targetCard &&
     now > culturalDrawState.cooldownUntil &&
-    ((isPinching && !culturalDrawState.isPinching) ||
-      (targetCard.matches(".cultural-card") && now - culturalDrawState.hoverStartedAt > CULTURAL_HOVER_DRAW_MS))
+    isPinching &&
+    !culturalDrawState.isPinching
   ) {
     triggerCulturalPointerClick(targetCard);
   }
@@ -450,6 +468,10 @@ function handleCulturalDrawResults(results) {
     if (now - culturalDrawState.lastSeenAt > POINTER_MISS_GRACE_MS) {
       culturalPointer?.classList.remove("is-visible", "is-clicking");
       clearCulturalCardHover();
+      if (culturalDrawState.handVisible) {
+        culturalDrawState.handVisible = false;
+        setCulturalDrawStatus("未检测到手掌，请把手完整放入摄像头画面。");
+      }
     }
     culturalDrawState.isPinching = false;
     return;
@@ -459,7 +481,12 @@ function handleCulturalDrawResults(results) {
 }
 
 async function initCulturalDrawScanner() {
-  if (!culturalScanVideo || !culturalPointer || !window.Hands || culturalHands || culturalScannerStarting) {
+  if (!culturalScanVideo || !culturalPointer || culturalHands || culturalScannerStarting) {
+    return;
+  }
+
+  if (!window.Hands) {
+    setCulturalDrawStatus("MediaPipe 未加载，海报可先用鼠标点击抽取。");
     return;
   }
 
@@ -497,6 +524,7 @@ async function initCulturalDrawScanner() {
     });
     culturalHands.setOptions({
       maxNumHands: 1,
+      selfieMode: true,
       modelComplexity: POINTER_MODEL_COMPLEXITY,
       minDetectionConfidence: POINTER_DETECTION_CONFIDENCE,
       minTrackingConfidence: POINTER_TRACKING_CONFIDENCE
@@ -571,6 +599,7 @@ function stopCulturalDrawScanner() {
   culturalPointer?.classList.remove("is-visible", "is-clicking");
   culturalDrawState.isPinching = false;
   culturalDrawState.lastSeenAt = 0;
+  culturalDrawState.handVisible = false;
   clearCulturalCardHover();
 }
 
@@ -995,6 +1024,27 @@ function getCenterPoint(points) {
   };
 }
 
+function isThumbExtended(landmarks) {
+  const wrist = landmarks[0];
+  const thumbMcp = landmarks[2];
+  const thumbIp = landmarks[3];
+  const thumbTip = landmarks[4];
+  const indexMcp = landmarks[5];
+  const pinkyMcp = landmarks[17];
+  const palmCenter = getCenterPoint([wrist, indexMcp, pinkyMcp]);
+  const palmWidth = distance2D(indexMcp, pinkyMcp);
+  const thumbSpread = distance2D(thumbTip, indexMcp);
+  const thumbReach = distance2D(thumbTip, palmCenter);
+  const thumbSegment = distance2D(thumbTip, thumbMcp);
+  const thumbBaseSegment = distance2D(thumbIp, thumbMcp);
+
+  return (
+    thumbSpread > palmWidth * 0.52 &&
+    thumbReach > palmWidth * 0.7 &&
+    thumbSegment > thumbBaseSegment * 1.2
+  );
+}
+
 function countExtendedFingers(landmarks) {
   let count = 0;
   const fingerPairs = [
@@ -1010,7 +1060,7 @@ function countExtendedFingers(landmarks) {
     }
   });
 
-  if (Math.abs(landmarks[4].x - landmarks[0].x) > 0.05) {
+  if (isThumbExtended(landmarks)) {
     count += 1;
   }
 
@@ -1403,9 +1453,10 @@ function onHandsResults(results) {
   const now = performance.now();
 
   if (!handsList.length) {
-    if (gestureState.gestureEnabled && now - gestureState.lastSeenAt > 300) {
+    if ((gestureState.gestureEnabled || appState.cameraReady) && now - gestureState.lastSeenAt > 300) {
       setTrackingState("未检测到手部", "muted");
       cameraHint.textContent = "请将一只或两只手完整置于画面中，保持适度光照。";
+      setStatus("摄像头已连接，但暂未识别到完整手部。", "warning");
     }
     resetGestureTracking();
     return;
@@ -1473,16 +1524,32 @@ async function initHands() {
 
   hands.setOptions({
     maxNumHands: 2,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.65,
-    minTrackingConfidence: 0.45
+    selfieMode: true,
+    modelComplexity: HAND_MODEL_COMPLEXITY,
+    minDetectionConfidence: HAND_DETECTION_CONFIDENCE,
+    minTrackingConfidence: HAND_TRACKING_CONFIDENCE
   });
 
   hands.onResults(onHandsResults);
 
   mediaCamera = new window.Camera(inputVideo, {
     onFrame: async () => {
-      await hands.send({ image: inputVideo });
+      if (gestureScanInFlight || !hands || inputVideo.readyState < 2) {
+        return;
+      }
+
+      gestureScanInFlight = true;
+      try {
+        await hands.send({ image: inputVideo });
+      } catch (error) {
+        const message = String(error?.message || error || "");
+        const isFrameBusy = message.includes("Graph has errors") || message.includes("already") || message.includes("busy");
+        if (!isFrameBusy) {
+          console.warn("手势识别帧处理失败。", error);
+        }
+      } finally {
+        gestureScanInFlight = false;
+      }
     },
     width: 640,
     height: 480
@@ -1525,6 +1592,7 @@ function stopGestureHands() {
   mediaCamera = null;
   hands = null;
   gestureHandsStarted = false;
+  gestureScanInFlight = false;
   appState.cameraReady = false;
   clearVideoOverlay();
   clearGestureLayer();

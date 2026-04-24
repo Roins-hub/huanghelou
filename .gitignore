@@ -7,4 +7,7 @@ dist
 .env
 .env.local
 *.log
+*.pyc
+__pycache__/
 data/chat-sessions
+output/playwright/

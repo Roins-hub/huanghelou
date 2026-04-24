@@ -1,6 +1,8 @@
 export const WELCOME_MESSAGE =
   "你好，我是黄鹤楼 AI 智能导览。可以问我楼层内容、手势玩法、展厅路线或常见问题。";
 
+export const API_HISTORY_LIMIT = 8;
+
 function createMessage({ id, direction, sender, message }) {
   return {
     id,
@@ -87,5 +89,5 @@ export function buildApiHistory(messages) {
       content: item.message
     }))
     .filter((item) => item.content)
-    .slice(-8);
+    .slice(-API_HISTORY_LIMIT);
 }

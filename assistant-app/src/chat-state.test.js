@@ -5,6 +5,7 @@ import {
   appendToMessage,
   appendAssistantMessage,
   appendUserMessage,
+  API_HISTORY_LIMIT,
   buildApiHistory,
   createInitialMessages
 } from "./chat-state.js";
@@ -48,6 +49,23 @@ describe("assistant chat state", () => {
       { role: "user", content: "介绍第一层" },
       { role: "assistant", content: "第一层是楼阁初识。" }
     ]);
+  });
+
+  it("limits API history to the configured recent context count", () => {
+    let messages = createInitialMessages();
+
+    for (let index = 0; index < API_HISTORY_LIMIT + 2; index += 1) {
+      messages = appendAssistantMessage(
+        appendUserMessage(messages, `user ${index}`),
+        `assistant ${index}`
+      );
+    }
+
+    const history = buildApiHistory(messages);
+
+    expect(history).toHaveLength(API_HISTORY_LIMIT);
+    expect(history[0]).toEqual({ role: "user", content: "user 6" });
+    expect(history.at(-1)).toEqual({ role: "assistant", content: "assistant 9" });
   });
 
   it("creates one incoming assistant placeholder and appends streamed text to it", () => {
