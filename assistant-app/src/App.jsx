@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChatContainer, MainContainer, Message, MessageInput, MessageList } from "@chatscope/chat-ui-kit-react";
+import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
 
 import {
   clearChatSession,
@@ -22,6 +23,7 @@ import {
   buildApiHistory,
   createInitialMessages
 } from "./chat-state.js";
+import { getSpeechInputHint, normalizeTranscript } from "./speech-input.js";
 import { quickQuestions } from "./quickQuestions.js";
 import heroImage from "./assets/yellow-crane-ink-hero.png";
 
@@ -204,7 +206,9 @@ function SettingsPage() {
 
 function ChatPage() {
   const [messages, setMessages] = useState(createInitialMessages);
+  const [draftMessage, setDraftMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isSpeechActive, setIsSpeechActive] = useState(false);
   const [error, setError] = useState("");
   const [settings] = useState(loadAssistantSettings);
   const [isHistoryReady, setIsHistoryReady] = useState(false);
@@ -212,6 +216,21 @@ function ChatPage() {
   const sessionId = useMemo(getChatSessionId, []);
   const saveTimerRef = useRef(null);
   const apiHistory = useMemo(() => buildApiHistory(messages), [messages]);
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition,
+    isMicrophoneAvailable
+  } = useSpeechRecognition();
+  const isVoiceListening = listening || isSpeechActive;
+  const speechHint = getSpeechInputHint({
+    browserSupportsSpeechRecognition,
+    isMicrophoneAvailable,
+    listening: isVoiceListening,
+    transcript
+  });
+  const hasDraftMessage = normalizeTranscript(draftMessage).length > 0;
 
   useEffect(() => {
     let isMounted = true;
@@ -260,13 +279,24 @@ function ChatPage() {
     };
   }, [isHistoryReady, messages, sessionId]);
 
-  async function submitMessage(rawMessage) {
-    const message = rawMessage.trim();
+  useEffect(() => {
+    const recognizedMessage = normalizeTranscript(transcript);
+
+    if (recognizedMessage) {
+      setDraftMessage(recognizedMessage);
+    }
+  }, [transcript]);
+
+  async function submitMessage(rawMessage = "") {
+    const message = normalizeTranscript(rawMessage);
 
     if (!message || isSending) {
       return;
     }
 
+    stopSpeechInput();
+    resetTranscript();
+    setDraftMessage("");
     setError("");
     const nextMessages = appendUserMessage(messages, message);
     const assistantPlaceholder = appendAssistantPlaceholder(nextMessages);
@@ -299,6 +329,52 @@ function ChatPage() {
     } finally {
       setIsSending(false);
     }
+  }
+
+  async function stopSpeechInput() {
+    setIsSpeechActive(false);
+
+    try {
+      await SpeechRecognition.stopListening();
+      await SpeechRecognition.abortListening();
+    } catch {
+      SpeechRecognition.abortListening();
+    }
+  }
+
+  async function toggleSpeechInput() {
+    if (!browserSupportsSpeechRecognition || isSending) {
+      return;
+    }
+
+    setError("");
+
+    if (listening || isSpeechActive) {
+      await stopSpeechInput();
+      return;
+    }
+
+    resetTranscript();
+    setDraftMessage("");
+    setIsSpeechActive(true);
+
+    try {
+      await SpeechRecognition.startListening({
+        continuous: true,
+        language: "zh-CN"
+      });
+    } catch {
+      setIsSpeechActive(false);
+      setError("语音识别启动失败，请检查麦克风权限或浏览器设置。");
+    }
+  }
+
+  function handleDraftChange(_innerHtml, textContent) {
+    setDraftMessage(textContent || "");
+  }
+
+  function handleDraftSend(_innerHtml, textContent, innerText) {
+    submitMessage(textContent || innerText || draftMessage);
   }
 
   function returnToGallery() {
@@ -389,16 +465,76 @@ function ChatPage() {
               {error ? <div className="assistant-error" role="alert">{error}</div> : null}
               {isSending ? <div className="assistant-thinking" role="status">小助手正在思考</div> : null}
 
+              <div className="assistant-input-row">
+                <button
+                  className={`assistant-voice-button${isVoiceListening ? " is-listening" : ""}`}
+                  type="button"
+                  aria-label={isVoiceListening ? "停止语音输入" : "开始语音输入"}
+                  aria-pressed={isVoiceListening}
+                  disabled={!browserSupportsSpeechRecognition || isSending}
+                  title={speechHint}
+                  onClick={toggleSpeechInput}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+                    <path d="M19 11a7 7 0 0 1-14 0" />
+                    <path d="M12 18v3" />
+                    <path d="M8 21h8" />
+                  </svg>
+                </button>
+                <MessageInput
+                attachButton={false}
+                disabled={isSending}
+                placeholder="问我黄鹤楼、楼层、手势或展厅玩法..."
+                sendButton
+                sendDisabled={isSending || !hasDraftMessage}
+                value={draftMessage}
+                activateAfterChange
+                onChange={handleDraftChange}
+                onSend={handleDraftSend}
+              />
+              </div>
+              <div className="assistant-speech-status" role="status" aria-live="polite">
+                {speechHint}
+              </div>
+            </ChatContainer>
+          </MainContainer>
+        </div>
+
+        <div className="assistant-input-panel">
+            <div className="assistant-input-row">
+              <button
+                className={`assistant-voice-button${isVoiceListening ? " is-listening" : ""}`}
+                type="button"
+                aria-label={isVoiceListening ? "停止语音输入" : "开始语音输入"}
+                aria-pressed={isVoiceListening}
+                disabled={!browserSupportsSpeechRecognition || isSending}
+                title={speechHint}
+                onClick={toggleSpeechInput}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+                  <path d="M19 11a7 7 0 0 1-14 0" />
+                  <path d="M12 18v3" />
+                  <path d="M8 21h8" />
+                </svg>
+              </button>
               <MessageInput
                 attachButton={false}
                 disabled={isSending}
                 placeholder="问我黄鹤楼、楼层、手势或展厅玩法..."
                 sendButton
-                onSend={submitMessage}
+                sendDisabled={isSending || !hasDraftMessage}
+                value={draftMessage}
+                activateAfterChange
+                onChange={handleDraftChange}
+                onSend={handleDraftSend}
               />
-            </ChatContainer>
-          </MainContainer>
-        </div>
+            </div>
+            <div className="assistant-speech-status" role="status" aria-live="polite">
+              {speechHint}
+            </div>
+          </div>
       </section>
     </main>
   );

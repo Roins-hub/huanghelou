@@ -219,7 +219,7 @@ textarea {
   z-index: 2;
   top: 7.4vh;
   right: 6vw;
-  bottom: 13.6vh;
+  bottom: calc(7.4vh + 68px);
   left: calc(6vw + 354px);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -233,6 +233,11 @@ textarea {
     0 8px 30px rgba(36, 34, 31, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(0.3px);
+}
+
+.assistant-chat .cs-chat-container > .assistant-input-row,
+.assistant-chat .cs-chat-container > .assistant-speech-status {
+  display: none;
 }
 
 .assistant-chat__meta {
@@ -295,6 +300,7 @@ textarea {
 }
 
 .assistant-chat .cs-chat-container {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -422,12 +428,102 @@ textarea {
   right: 9px;
 }
 
-.assistant-chat .cs-message-input {
+.assistant-input-panel {
+  position: absolute;
+  z-index: 2;
+  right: 6vw;
+  bottom: 7.4vh;
+  left: calc(6vw + 354px);
+  padding: 10px 0 0;
+  background: transparent;
+}
+
+.assistant-input-row {
+  position: absolute;
+  z-index: 6;
+  right: 32px;
+  bottom: 34px;
+  left: 32px;
+  display: flex;
+  align-items: center;
   flex: 0 0 auto;
-  width: calc(100% - 64px);
+  gap: 10px;
+  width: auto;
+  margin: 0;
+}
+
+.assistant-input-panel .assistant-input-row {
+  position: static;
+  z-index: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  width: 100%;
+}
+
+.assistant-voice-button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(52, 46, 39, 0.16);
+  border-radius: 4px;
+  color: rgba(150, 45, 42, 0.68);
+  background: rgba(255, 253, 246, 0.58);
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.assistant-voice-button:hover:not(:disabled),
+.assistant-voice-button.is-listening {
+  border-color: rgba(150, 45, 42, 0.46);
+  color: rgba(150, 45, 42, 0.96);
+  background: rgba(255, 253, 246, 0.9);
+  transform: translateY(-1px);
+}
+
+.assistant-voice-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.assistant-voice-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.assistant-speech-status {
+  position: absolute;
+  z-index: 6;
+  right: 32px;
+  bottom: 12px;
+  left: 32px;
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 18px;
+  margin: 0;
+  color: rgba(37, 35, 31, 0.54);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.assistant-input-panel .assistant-speech-status {
+  display: none;
+}
+
+.assistant-chat .cs-message-input,
+.assistant-input-panel .cs-message-input {
+  flex: 0 0 auto;
+  width: 100%;
   height: 44px;
   min-height: 44px;
-  margin: 0 32px 18px;
+  margin: 0;
   border: 1px solid rgba(52, 46, 39, 0.14);
   border-radius: 4px;
   background: rgba(255, 253, 246, 0.5);
@@ -435,14 +531,24 @@ textarea {
   cursor: text;
 }
 
+.assistant-input-panel .cs-message-input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
 .assistant-chat .cs-message-input__content-editor-container,
 .assistant-chat .cs-message-input__content-editor-wrapper,
-.assistant-chat .cs-message-input__content-editor {
+.assistant-chat .cs-message-input__content-editor,
+.assistant-input-panel .cs-message-input__content-editor-container,
+.assistant-input-panel .cs-message-input__content-editor-wrapper,
+.assistant-input-panel .cs-message-input__content-editor {
   color: #25231f;
   background: transparent !important;
 }
 
-.assistant-chat .cs-message-input__content-editor-wrapper {
+.assistant-chat .cs-message-input__content-editor-wrapper,
+.assistant-input-panel .cs-message-input__content-editor-wrapper {
   display: flex;
   align-items: center;
   flex: 1 1 auto;
@@ -454,7 +560,8 @@ textarea {
   cursor: text;
 }
 
-.assistant-chat .cs-message-input__content-editor-container {
+.assistant-chat .cs-message-input__content-editor-container,
+.assistant-input-panel .cs-message-input__content-editor-container {
   flex: 1 1 auto;
   width: 100%;
   min-height: 22px;
@@ -464,7 +571,8 @@ textarea {
   cursor: text;
 }
 
-.assistant-chat .cs-message-input__content-editor {
+.assistant-chat .cs-message-input__content-editor,
+.assistant-input-panel .cs-message-input__content-editor {
   width: 100%;
   min-width: 0;
   min-height: 22px;
@@ -472,15 +580,18 @@ textarea {
   cursor: text;
 }
 
-.assistant-chat .cs-button--send {
+.assistant-chat .cs-button--send,
+.assistant-input-panel .cs-button--send {
   flex: 0 0 auto;
 }
 
-.assistant-chat .cs-message-input__content-editor[data-placeholder]:empty::before {
+.assistant-chat .cs-message-input__content-editor[data-placeholder]:empty::before,
+.assistant-input-panel .cs-message-input__content-editor[data-placeholder]:empty::before {
   color: rgba(37, 35, 31, 0.42);
 }
 
-.assistant-chat .cs-button--send {
+.assistant-chat .cs-button--send,
+.assistant-input-panel .cs-button--send {
   color: rgba(150, 45, 42, 0.56);
 }
 
@@ -764,7 +875,7 @@ textarea {
     top: 300px;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: 58px;
     border-width: 1px 0 0;
     border-radius: 0;
   }
@@ -779,6 +890,13 @@ textarea {
 
   .assistant-chat .cs-chat-container {
     height: 100%;
+  }
+
+  .assistant-input-panel {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 8px 12px;
   }
 
   .assistant-chat .cs-message {
@@ -803,11 +921,52 @@ textarea {
     max-width: calc(100vw - 92px);
   }
 
-  .assistant-chat .cs-message-input {
-    width: calc(100% - 24px);
+  .assistant-input-row {
+    right: 12px;
+    bottom: 28px;
+    left: 12px;
+    width: auto;
+    gap: 8px;
+    margin: 0;
+  }
+
+  .assistant-input-panel .assistant-input-row {
+    position: static;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+  }
+
+  .assistant-voice-button {
+    flex-basis: 42px;
+    width: 42px;
+    height: 42px;
+  }
+
+  .assistant-chat .cs-message-input,
+  .assistant-input-panel .cs-message-input {
+    width: 100%;
     height: 42px;
     min-height: 42px;
-    margin: 0 12px 10px;
+    margin: 0;
+  }
+
+  .assistant-speech-status {
+    right: 12px;
+    bottom: 8px;
+    left: 12px;
+    width: auto;
+    margin: 0;
+  }
+
+  .assistant-input-panel .assistant-speech-status {
+    position: static;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    margin-top: 5px;
   }
 
   .assistant-context-count {
