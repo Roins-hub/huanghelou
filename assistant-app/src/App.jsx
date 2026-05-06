@@ -465,7 +465,7 @@ function ChatPage() {
               {error ? <div className="assistant-error" role="alert">{error}</div> : null}
               {isSending ? <div className="assistant-thinking" role="status">小助手正在思考</div> : null}
 
-              <div className="assistant-input-row">
+              <div className={`assistant-input-row${isVoiceListening ? " is-listening" : ""}`}>
                 <button
                   className={`assistant-voice-button${isVoiceListening ? " is-listening" : ""}`}
                   type="button"
@@ -482,6 +482,7 @@ function ChatPage() {
                     <path d="M8 21h8" />
                   </svg>
                 </button>
+                <VoiceListeningIndicator active={isVoiceListening} />
                 <MessageInput
                 attachButton={false}
                 disabled={isSending}
@@ -502,7 +503,7 @@ function ChatPage() {
         </div>
 
         <div className="assistant-input-panel">
-            <div className="assistant-input-row">
+            <div className={`assistant-input-row${isVoiceListening ? " is-listening" : ""}`}>
               <button
                 className={`assistant-voice-button${isVoiceListening ? " is-listening" : ""}`}
                 type="button"
@@ -519,6 +520,7 @@ function ChatPage() {
                   <path d="M8 21h8" />
                 </svg>
               </button>
+              <VoiceListeningIndicator active={isVoiceListening} />
               <MessageInput
                 attachButton={false}
                 disabled={isSending}
@@ -537,6 +539,23 @@ function ChatPage() {
           </div>
       </section>
     </main>
+  );
+}
+
+function VoiceListeningIndicator({ active }) {
+  if (!active) {
+    return null;
+  }
+
+  return (
+    <div className="assistant-listening-indicator" aria-hidden="true">
+      <span className="assistant-listening-bars">
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+      <span>正在听...</span>
+    </div>
   );
 }
 
