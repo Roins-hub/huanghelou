@@ -462,6 +462,7 @@ textarea {
 }
 
 .assistant-voice-button {
+  position: relative;
   display: inline-grid;
   place-items: center;
   flex: 0 0 44px;
@@ -472,6 +473,7 @@ textarea {
   color: rgba(150, 45, 42, 0.68);
   background: rgba(255, 253, 246, 0.58);
   cursor: pointer;
+  isolation: isolate;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
 
@@ -481,6 +483,16 @@ textarea {
   color: rgba(150, 45, 42, 0.96);
   background: rgba(255, 253, 246, 0.9);
   transform: translateY(-1px);
+}
+
+.assistant-voice-button.is-listening::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  z-index: -1;
+  border: 1px solid rgba(150, 45, 42, 0.26);
+  border-radius: 6px;
+  animation: assistant-voice-pulse 1.25s ease-out infinite;
 }
 
 .assistant-voice-button:disabled {
@@ -496,6 +508,60 @@ textarea {
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.assistant-listening-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  height: 44px;
+  min-width: 104px;
+  padding: 0 12px;
+  border: 1px solid rgba(150, 45, 42, 0.2);
+  border-radius: 4px;
+  color: rgba(150, 45, 42, 0.96);
+  background: rgba(255, 253, 246, 0.78);
+  box-shadow: 0 0 0 1px rgba(255, 253, 246, 0.22) inset;
+  font-size: 0.86rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.assistant-listening-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: 18px;
+  height: 16px;
+}
+
+.assistant-listening-bars span {
+  display: block;
+  width: 3px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.74;
+  animation: assistant-listening-wave 820ms ease-in-out infinite;
+}
+
+.assistant-listening-bars span:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.assistant-listening-bars span:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.assistant-input-row.is-listening .cs-message-input {
+  border-color: rgba(150, 45, 42, 0.36);
+  background: rgba(255, 253, 246, 0.68);
+  box-shadow:
+    0 0 0 1px rgba(150, 45, 42, 0.08) inset,
+    0 0 16px rgba(150, 45, 42, 0.1);
+  animation: assistant-input-listening 1.5s ease-in-out infinite;
 }
 
 .assistant-speech-status {
@@ -593,6 +659,46 @@ textarea {
 .assistant-chat .cs-button--send,
 .assistant-input-panel .cs-button--send {
   color: rgba(150, 45, 42, 0.56);
+}
+
+@keyframes assistant-voice-pulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.92);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+
+@keyframes assistant-listening-wave {
+  0%,
+  100% {
+    height: 6px;
+    opacity: 0.48;
+  }
+
+  50% {
+    height: 16px;
+    opacity: 1;
+  }
+}
+
+@keyframes assistant-input-listening {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(150, 45, 42, 0.08) inset,
+      0 0 12px rgba(150, 45, 42, 0.08);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(150, 45, 42, 0.16) inset,
+      0 0 20px rgba(150, 45, 42, 0.16);
+  }
 }
 
 .floor-guide-card {
@@ -942,6 +1048,14 @@ textarea {
     flex-basis: 42px;
     width: 42px;
     height: 42px;
+  }
+
+  .assistant-listening-indicator {
+    height: 42px;
+    min-width: 88px;
+    padding: 0 9px;
+    gap: 6px;
+    font-size: 0.8rem;
   }
 
   .assistant-chat .cs-message-input,
